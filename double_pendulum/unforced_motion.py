@@ -18,14 +18,7 @@ def unforced_motion(
 
     # 4次ルンゲクッタ
     for i in range(1, t_vec.size):
-        x_prev = x_vec[i - 1]
-
-        k1 = model.f(x_prev, 0)
-        k2 = model.f(x_prev + 0.5 * dt * k1, 0)
-        k3 = model.f(x_prev + 0.5 * dt * k2, 0)
-        k4 = model.f(x_prev + dt * k3, 0)
-
-        x_vec[i] = x_prev + dt * (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
+        x_vec[i] = model.rk4(x_vec[i - 1], 0, dt)
 
     return x_vec, t_vec
 
