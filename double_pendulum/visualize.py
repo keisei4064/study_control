@@ -217,7 +217,7 @@ def main() -> None:
             [
                 np.deg2rad(30.0),
                 np.deg2rad(10.0),
-                -15.0,
+                15.0,
                 15.0,
             ],
             dtype=np.float64,
