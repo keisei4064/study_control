@@ -80,6 +80,7 @@ def main():
     import matplotlib.pyplot as plt
     import visualize
 
+    # 実験条件パラメータ設定 ----------------------------------------
     model = DoublePendulum()
     sim_dt = 0.0001
     sim_time = 3
@@ -92,7 +93,8 @@ def main():
     x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
     # x0 = np.array([np.deg2rad(30), np.deg2rad(30), np.deg2rad(-30), np.deg2rad(30)])
 
-    # ---
+    # =================================================
+    # 極配置 でFを決定 --------------------------------
 
     # target_poles = np.array([-5.0, -6.0, -7.0, -8.0])
     # target_poles = np.array([-1.0, -2.0, -3.0, -4.0])
@@ -100,7 +102,7 @@ def main():
 
     # F = calc_pole_placement(model, target_poles)
 
-    # ---
+    # LQR でFを決定 ----------------------------------
 
     # Q = np.diag([1.0, 1.0, 1.0, 1.0])
     # Q = np.diag([1.0, 1.0, 0, 0])
@@ -109,7 +111,9 @@ def main():
     R = np.array([[1.0]])
     F = calc_lqr(model, Q, R)
 
-    # ---
+    # =================================================
+    
+    # シミュレーション ----------------------------------------------
 
     full_state_feedback = FullStateFeedback(model, F)
     full_state_feedback.print_feedback_system_info()
@@ -119,10 +123,10 @@ def main():
         full_state_feedback=full_state_feedback,
         x0=x0,
         dt=sim_dt,
-        sim_time=3,
+        sim_time=sim_time,
     )
 
-    # 結果のプロット
+    # 結果のプロット ---------------------------------------------
     state_labels = [
         r"$\theta_1$",
         r"$\theta_2$",
@@ -155,7 +159,7 @@ def main():
     plt.tight_layout()
     plt.show(block=False)
 
-    # アニメーション
+    # アニメーション ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
     animation = plotter.animate(
