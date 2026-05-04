@@ -1,15 +1,37 @@
 import numpy as np
 import scipy.signal
-import scipy.linalg
-from model import DoublePendulum
+from enum import Enum
+from typing import Protocol
 
+from model import DoublePendulum
 import continuous_controller
 
 
-class FullOrderStateObserver:
+class SensingMode(Enum):
+    FullOrderStateObserverButNotUseForFeedback = 1
+    FullOrderStateObserverMode = 2
+    MinimalOrderStateObserverMode = 3
+
+
+class ObserverProtocol(Protocol):
+    def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray) -> np.ndarray: ...
+
+    def get_x_hat(self) -> np.ndarray: ...
+
+    def get_A_closed_loop(self) -> np.ndarray: ...
+
+
+class FullOrderStateObserver(ObserverProtocol):
     """同一次元状態オブザーバー"""
 
-    def __init__(self, model: DoublePendulum, C: np.ndarray, L: np.ndarray):
+    def __init__(
+        self,
+        model: DoublePendulum,
+        C: np.ndarray,
+        L: np.ndarray,
+        dt: float,
+        x_hat0: np.ndarray,
+    ):
         A, b = model.calc_continuous_linear_system()
         self.dim_x: int = A.shape[0]
         assert C.shape[1] == self.dim_x
@@ -20,8 +42,20 @@ class FullOrderStateObserver:
         self.b = b
         self.C = C
         self.L = L
+        self.dt = dt
 
-    def calc_x_hat_dot(
+        self.A_closed_loop = self.A - self.L @ self.C
+
+        # 初期値
+        self.x_hat = x_hat0
+
+    def get_x_hat(self) -> np.ndarray:
+        return self.x_hat
+
+    def get_A_closed_loop(self) -> np.ndarray:
+        return self.A_closed_loop
+
+    def _calc_x_hat_dot(
         self, x_hat: np.ndarray, u: np.ndarray, y: np.ndarray
     ) -> np.ndarray:
         assert y.shape == (self.dim_y,)
@@ -29,25 +63,26 @@ class FullOrderStateObserver:
         x_hat_dot = self.A @ x_hat + self.b @ u + self.L @ (y - self.C @ x_hat)
         return x_hat_dot
 
-    def calc_next_x_hat(
-        self, x_hat: np.ndarray, u: np.ndarray, y: np.ndarray, dt: float
-    ) -> np.ndarray:
+    def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
+        x_hat = self.x_hat
+        dt = self.dt
+
         # RK4 で計算
         # y と u は固定でいいんか？
-        k1 = self.calc_x_hat_dot(x_hat, u, y)
-        k2 = self.calc_x_hat_dot(x_hat + 0.5 * dt * k1, u, y)
-        k3 = self.calc_x_hat_dot(x_hat + 0.5 * dt * k2, u, y)
-        k4 = self.calc_x_hat_dot(x_hat + dt * k3, u, y)
+        k1 = self._calc_x_hat_dot(x_hat, u, y)
+        k2 = self._calc_x_hat_dot(x_hat + 0.5 * dt * k1, u, y)
+        k3 = self._calc_x_hat_dot(x_hat + 0.5 * dt * k2, u, y)
+        k4 = self._calc_x_hat_dot(x_hat + dt * k3, u, y)
 
         x_hat_next = x_hat + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+        self.x_hat = x_hat_next
         return x_hat_next
 
     def print_observer_info(self):
-        A_closed_loop = self.A - self.L @ self.C
-        poles = np.linalg.eig(A_closed_loop)[0]
+        poles = np.linalg.eig(self.A_closed_loop)[0]
         print("Full-Order Observer ---")
         print(f"L: \n{self.L}")
-        print(f"A_closed_loop: \n{A_closed_loop}")
+        print(f"A_closed_loop: \n{self.A_closed_loop}")
         print(f"poles: {poles}")
 
     @classmethod
@@ -63,7 +98,7 @@ class FullOrderStateObserver:
         B = C.T
 
         # 極配置
-        # [place_poles — SciPy v1.17.0 Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.place_poles.html?utm_source=chatgpt.com)
+        # [place_poles — SciPy v1.17.0 Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.place_poles.html)
         full_state_feedback_obj = scipy.signal.place_poles(A, B, target_poles)
         F: np.ndarray = getattr(full_state_feedback_obj, "gain_matrix")
 
@@ -74,22 +109,124 @@ class FullOrderStateObserver:
 
 
 class MinimalOrderStateObserver:
-    pass
+    """最小次元オブザーバー"""
+
+    def __init__(
+        self,
+        model: DoublePendulum,
+        C: np.ndarray,
+        L: np.ndarray,
+        dt: float,
+        z0: np.ndarray,
+    ):
+        self.dim_x: int = 2
+        assert C.shape[1] == self.dim_x
+        self.dim_y: int = C.shape[0]
+        assert L.shape == (self.dim_x - self.dim_y, self.dim_y)
+
+        self.C = C
+        self.L = L
+        self.dt = dt
+
+        # 初期値
+        self.z = z0
+
+        # 簡略化
+        # C は [1, 0, 0, 0] or [[1, 0, 0, 0]; [0, 1, 0, 0]]
+        # T = np.identity(self.dim_x)
+
+        A, b = model.calc_continuous_linear_system()
+        A_11 = A[: self.dim_y, : self.dim_y]
+        A_12 = A[: self.dim_y, self.dim_y :]
+        A_21 = A[self.dim_y :, : self.dim_y]
+        A_22 = A[self.dim_y :, self.dim_y :]
+
+        B_1 = b[: self.dim_y]
+        B_2 = b[self.dim_y :]
+
+        self.F = A_22 - L @ A_12
+        self.G = A_22 @ L + A_21 - L @ (A_12 @ L + A_11)
+        self.H = B_2 - L @ B_1
+        self.W = np.block(
+            [
+                [np.zeros((self.dim_x, self.dim_x - self.dim_y))],
+                [np.eye(self.dim_x - self.dim_y)],
+            ]
+        )
+        self.V = np.block(
+            [
+                [np.eye(self.dim_y)],
+                [L],
+            ]
+        )
+
+        self.x_hat = self.W @ self.z
+
+    def get_x_hat(self) -> np.ndarray:
+        return self.x_hat
+
+    def get_A_closed_loop(self) -> np.ndarray:
+        return self.F
+
+    def _calc_z_dot(self, z: np.ndarray, u: np.ndarray, y: np.ndarray) -> np.ndarray:
+        z_dot = self.F @ z + self.G @ y + self.H @ u
+        return z_dot
+
+    def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray, dt: float):
+        z = self.z
+        k1 = self._calc_z_dot(z, u, y)
+        k2 = self._calc_z_dot(z + 0.5 * dt * k1, u, y)
+        k3 = self._calc_z_dot(z + 0.5 * dt * k2, u, y)
+        k4 = self._calc_z_dot(z + dt * k3, u, y)
+        next_z = z + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+
+        self.x_hat = self.W @ next_z + self.V @ y
+
+        self.z = next_z
+        return self.x_hat
+
+    def print_observer_info(self):
+        poles = np.linalg.eig(self.F)[0]
+        print("Minimal-Order Observer ---")
+        print(f"C: \n{self.C}")
+        print(f"L: \n{self.L}")
+        print(f"F: \n{self.F}")
+        print(f"G: \n{self.G}")
+        print(f"H: \n{self.H}")
+        print(f"W: \n{self.W}")
+        print(f"V: \n{self.V}")
+        print(f"poles: {poles}")
+
+    @classmethod
+    def calc_pole_placement(
+        cls, model: DoublePendulum, C: np.ndarray, target_poles: np.ndarray
+    ) -> np.ndarray:
+        A, _ = model.calc_continuous_linear_system()
+        dim_x = A.shape[0]
+        dim_y = C.shape[0]
+
+        assert target_poles.shape == (dim_x - dim_y,)
+
+        A_12 = A[:dim_y, dim_y:]
+        A_22 = A[dim_y:, dim_y:]
+
+        # 極配置
+        full_state_feedback_obj = scipy.signal.place_poles(A_22.T, A_12.T, target_poles)
+        L: np.ndarray = getattr(full_state_feedback_obj, "gain_matrix").T
+
+        return L
 
 
 def simulate(
     model: DoublePendulum,
     full_state_feedback: continuous_controller.FullStateFeedback,
     C: np.ndarray,
-    observer: FullOrderStateObserver,
+    observer: ObserverProtocol,
     x0: np.ndarray,
-    x_hat0: np.ndarray,
     dt: float,
     sim_time: float,
     use_observer: bool,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    assert x0.shape == (4,)
-
     step_num = int(sim_time / dt) + 1
     t_vec = np.linspace(0.0, sim_time, step_num, dtype=np.float64)
     x_vec = np.zeros((t_vec.size, x0.shape[0]))
@@ -98,13 +235,15 @@ def simulate(
 
     # 初期状態
     x_vec[0] = x0
-    x_hat_vec[0] = x_hat0
+    x_hat_vec[0] = observer.get_x_hat()
 
     # 4次ルンゲクッタ
     for i in range(1, t_vec.size):
         # オブザーバー計算
         y = C @ x_vec[i - 1]
-        x_hat_vec[i] = observer.calc_next_x_hat(x_hat_vec[i - 1], u_vec[i - 1], y, dt)
+
+        # オブザーバー計算
+        x_hat_vec[i] = observer.calc_next_x_hat(u_vec[i - 1], y)
 
         # フィードバック入力
         if use_observer:
@@ -121,6 +260,7 @@ def simulate(
 def main():
     import matplotlib.pyplot as plt
     import visualize
+    import control_common
 
     # 実験条件パラメータ設定 ----------------------------------------
     model = DoublePendulum()
@@ -133,8 +273,8 @@ def main():
     # x0 = np.array([0.05, 0, 0, 0])
     # x0 = np.array([0.05, 0.0, 0.05, 0.05])
     # x0 = np.array([np.deg2rad(30), np.deg2rad(-10), 0, 0])
-    # x0 = np.array([np.deg2rad(20), np.deg2rad(10), np.deg2rad(-30), 0])
-    x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
+    x0 = np.array([np.deg2rad(20), np.deg2rad(10), np.deg2rad(-30), 0])
+    # x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
     # x0 = np.array([np.deg2rad(30), np.deg2rad(30), np.deg2rad(-30), np.deg2rad(30)])
 
     # オブザーバー設定 ------------------------------------------------
@@ -157,11 +297,23 @@ def main():
     controller_poles = full_state_feedback.poles()
     # 一番遅いフィードバック極を基準に
     observer_base = 5.0 * (-np.max(np.real(controller_poles)))
-    observer_poles = -observer_base * np.array([1.0, 1.2, 1.4, 1.6])  # バラバラにする必要があるらしい
+    observer_poles = -observer_base * np.array(
+        [1.0, 1.2, 1.4, 1.6]
+    )  # バラバラにする必要があるらしい
     L = FullOrderStateObserver.calc_pole_placement(model, C, observer_poles)
-    observer = FullOrderStateObserver(model, C, L)
+    observer = FullOrderStateObserver(model, C, L, sim_dt, x_hat0)
     observer.print_observer_info()
     # =================================================
+
+    fig, ax = plt.subplots()
+    control_common.plot_eigenvalues_on_complex_plane(
+        ax, full_state_feedback.A_closed_loop, "Feedback"
+    )
+    control_common.plot_eigenvalues_on_complex_plane(
+        ax, observer.get_A_closed_loop(), "Observer"
+    )
+    plt.tight_layout()
+    plt.show(block=False)
 
     # シミュレーション ----------------------------------------------
     x_vec, t_vec, u_vec, x_hat_vec = simulate(
@@ -170,7 +322,6 @@ def main():
         C=C,
         observer=observer,
         x0=x0,
-        x_hat0=x_hat0,
         dt=sim_dt,
         sim_time=sim_time,
         use_observer=True,

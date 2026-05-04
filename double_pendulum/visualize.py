@@ -73,6 +73,7 @@ class DoublePendulumPlotter:
             markersize=8.0,
             label="true joints",
             zorder=3,
+            color="gray",
         )
 
         x_hat_line_1_color = darken_color(line_1.get_color(), factor=0.85)

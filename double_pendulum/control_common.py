@@ -1,5 +1,6 @@
 import numpy as np
-
+import numpy.typing as npt
+from matplotlib.axes import Axes
 
 def calc_controlability_matrix(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     """可制御性行列を計算"""
@@ -27,6 +28,30 @@ def calc_observability_matrix(A: np.ndarray, C: np.ndarray) -> np.ndarray:
         U_o[k * i : k * (i + 1)] = U_o[k * (i - 1) : k * i] @ A
 
     return U_o
+
+
+FloatArray = npt.NDArray[np.float64]
+ComplexArray = npt.NDArray[np.complex128]
+
+
+def plot_eigenvalues_on_complex_plane(ax: Axes, A: FloatArray, label: str) -> Axes:
+    eigvals: ComplexArray = np.linalg.eigvals(A)
+
+    # 描画
+    ax.scatter(eigvals.real, eigvals.imag, label=label)
+
+    # 実軸・虚軸
+    ax.axhline(0.0, linewidth=1.0)
+    ax.axvline(0.0, linewidth=1.0)
+
+    ax.set_xlabel("Re")
+    ax.set_ylabel("Im")
+    ax.set_title("Eigenvalues")
+    ax.grid(True)
+    ax.set_aspect("equal")
+    ax.legend()
+    
+    return ax
 
 
 def main():

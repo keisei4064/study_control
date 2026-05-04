@@ -37,7 +37,7 @@ def calc_pole_placement(model: DoublePendulum, target_poles: np.ndarray) -> np.n
     assert target_poles.shape == (A.shape[0],)
 
     # 極配置
-    # [place_poles — SciPy v1.17.0 Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.place_poles.html?utm_source=chatgpt.com)
+    # [place_poles — SciPy v1.17.0 Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.place_poles.html)
     full_state_feedback_obj = scipy.signal.place_poles(A, b, target_poles)
     F: np.ndarray = getattr(full_state_feedback_obj, "gain_matrix")
 
@@ -84,6 +84,7 @@ def simulate_feedback_response(
 def main():
     import matplotlib.pyplot as plt
     import visualize
+    import control_common
 
     # 実験条件パラメータ設定 ----------------------------------------
     model = DoublePendulum()
@@ -116,12 +117,19 @@ def main():
     R = np.array([[1.0]])
     F = calc_lqr(model, Q, R)
 
-    # =================================================
-
-    # シミュレーション ----------------------------------------------
-
     full_state_feedback = FullStateFeedback(model, F)
     full_state_feedback.print_feedback_system_info()
+
+    # =================================================
+
+    fig, ax = plt.subplots()
+    control_common.plot_eigenvalues_on_complex_plane(
+        ax, full_state_feedback.A_closed_loop, "Feedback"
+    )
+    plt.tight_layout()
+    plt.show(block=False)
+
+    # シミュレーション ----------------------------------------------
 
     x_vec, t_vec, u_vec = simulate_feedback_response(
         model=model,
