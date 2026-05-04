@@ -133,8 +133,8 @@ def main():
     # x0 = np.array([0.05, 0, 0, 0])
     # x0 = np.array([0.05, 0.0, 0.05, 0.05])
     # x0 = np.array([np.deg2rad(30), np.deg2rad(-10), 0, 0])
-    x0 = np.array([np.deg2rad(30), np.deg2rad(10), np.deg2rad(-30), 0])
-    # x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
+    # x0 = np.array([np.deg2rad(20), np.deg2rad(10), np.deg2rad(-30), 0])
+    x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
     # x0 = np.array([np.deg2rad(30), np.deg2rad(30), np.deg2rad(-30), np.deg2rad(30)])
 
     # オブザーバー設定 ------------------------------------------------
@@ -240,6 +240,7 @@ def main():
     animation = plotter.animate(
         x_history=x_vec[::split_num],
         t_history=t_vec[::split_num],
+        x_hat_history=x_hat_vec[::split_num],
         interval_ms=anim_dt * 1000,
         repeat=True,
     )

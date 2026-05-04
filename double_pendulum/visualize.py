@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.artist import Artist
+import matplotlib.colors as mcolors
 from matplotlib.animation import FuncAnimation
 import numpy as np
 import numpy.typing as npt
@@ -17,11 +18,19 @@ from unforced_motion import unforced_motion
 FloatArray: TypeAlias = npt.NDArray[np.float64]
 
 
+def darken_color(color: object, factor: float = 0.8) -> tuple[float, float, float]:
+    """Matplotlib の色指定を少し暗くした RGB に変換する。"""
+    r, g, b = mcolors.to_rgb(color)
+    return (factor * r, factor * g, factor * b)
+
+
 @dataclass(slots=True)
 class DoublePendulumArtists:
     line_1: Line2D
     line_2: Line2D
     point_line: Line2D
+    x_hat_line_1: Line2D
+    x_hat_line_2: Line2D
     time_text: Text
 
 
@@ -46,19 +55,56 @@ class DoublePendulumPlotter:
             [],
             linewidth=12.0,
             solid_capstyle="round",
+            label="true link 1",
+            zorder=2,
         )
         (line_2,) = ax.plot(
             [],
             [],
             linewidth=12.0,
             solid_capstyle="round",
+            label="true link 2",
+            zorder=2,
         )
         (point_line,) = ax.plot(
             [],
             [],
             "o",
             markersize=8.0,
+            label="true joints",
+            zorder=3,
         )
+
+        x_hat_line_1_color = darken_color(line_1.get_color(), factor=0.85)
+        x_hat_line_2_color = darken_color(line_2.get_color(), factor=0.85)
+
+        # 推定値 x_hat: 真値と同系色の濃い破線リンクだけを重ねる
+        (x_hat_line_1,) = ax.plot(
+            [],
+            [],
+            linestyle="--",
+            linewidth=3.0,
+            color=x_hat_line_1_color,
+            alpha=0.75,
+            solid_capstyle="round",
+            dash_capstyle="round",
+            label=r"$\hat{x}$ link 1",
+        )
+        (x_hat_line_2,) = ax.plot(
+            [],
+            [],
+            linestyle="--",
+            linewidth=3.0,
+            color=x_hat_line_2_color,
+            alpha=0.75,
+            solid_capstyle="round",
+            dash_capstyle="round",
+            label=r"$\hat{x}$ link 2",
+        )
+
+        # デフォルトで非表示
+        x_hat_line_1.set_visible(False)
+        x_hat_line_2.set_visible(False)
 
         # タイトルとして時間表示（blit=False にする必要あり）
         # time_title_text = ax.set_title("")
@@ -76,6 +122,8 @@ class DoublePendulumPlotter:
             line_1=line_1,
             line_2=line_2,
             point_line=point_line,
+            x_hat_line_1=x_hat_line_1,
+            x_hat_line_2=x_hat_line_2,
             time_text=time_text,
         )
 
@@ -84,6 +132,7 @@ class DoublePendulumPlotter:
         artists: DoublePendulumArtists,
         x: FloatArray,
         t: float,
+        x_hat: FloatArray | None = None,
     ) -> tuple[Artist, ...]:
         link_1_x, link_1_y, link_2_x, link_2_y, point_x, point_y = self._calc_points(x)
 
@@ -92,10 +141,34 @@ class DoublePendulumPlotter:
         artists.point_line.set_data(point_x, point_y)
         artists.time_text.set_text(f"t = {t:.2f} s")
 
+        # 推定値 x_hat があるならそれも描写
+        if x_hat is None:
+            # 非表示
+            artists.x_hat_line_1.set_visible(False)
+            artists.x_hat_line_2.set_visible(False)
+        else:
+            (
+                x_hat_link_1_x,
+                x_hat_link_1_y,
+                x_hat_link_2_x,
+                x_hat_link_2_y,
+                _,
+                _,
+            ) = self._calc_points(x_hat)
+
+            artists.x_hat_line_1.set_data(x_hat_link_1_x, x_hat_link_1_y)
+            artists.x_hat_line_2.set_data(x_hat_link_2_x, x_hat_link_2_y)
+
+            # 表示
+            artists.x_hat_line_1.set_visible(True)
+            artists.x_hat_line_2.set_visible(True)
+
         return (
             artists.line_1,
             artists.line_2,
             artists.point_line,
+            artists.x_hat_line_1,
+            artists.x_hat_line_2,
             artists.time_text,
         )
 
@@ -105,6 +178,7 @@ class DoublePendulumPlotter:
         t_history: FloatArray,
         interval_ms: float,
         repeat: bool = False,
+        x_hat_history: FloatArray | None = None,
     ) -> FuncAnimation:
         """アニメーションを作成"""
         # 配列shapeチェック
@@ -118,7 +192,18 @@ class DoublePendulumPlotter:
                 f"{x_history.shape[0]} != {t_history.shape[0]}"
             )
 
-        # axes と artistの初期設定
+        if x_hat_history is not None:
+            # 推定値 x_hat がある場合はその shape もチェック
+            if x_hat_history.ndim != 2 or x_hat_history.shape[1] != 4:
+                raise ValueError(
+                    f"x_hat_history must have shape (N, 4), got {x_hat_history.shape}"
+                )
+            if x_hat_history.shape[0] != t_history.shape[0]:
+                raise ValueError(
+                    f"x_hat_history and t_history length mismatch: "
+                    f"{x_hat_history.shape[0]} != {t_history.shape[0]}"
+                )
+
         fig, ax = plt.subplots()
         self.setup_axes(ax)
         artists = self.init_artists(ax)
@@ -126,17 +211,21 @@ class DoublePendulumPlotter:
         # 初期化関数
         def init() -> tuple[Artist, ...]:
             # 単にインデックス0を指定するだけ
+            x_hat = None if x_hat_history is None else x_hat_history[0]
             return self.update_artists(
                 artists=artists,
                 x=x_history[0],
+                x_hat=x_hat,
                 t=float(t_history[0]),
             )
 
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
+            x_hat = None if x_hat_history is None else x_hat_history[frame_index]
             return self.update_artists(
                 artists=artists,
                 x=x_history[frame_index],
+                x_hat=x_hat,
                 t=float(t_history[frame_index]),
             )
 
