@@ -103,7 +103,8 @@ class DoublePendulumPlotter:
         self,
         x_history: FloatArray,
         t_history: FloatArray,
-        interval_ms: float = 20.0,
+        interval_ms: float,
+        repeat: bool = False,
     ) -> FuncAnimation:
         """アニメーションを作成"""
         # 配列shapeチェック
@@ -147,7 +148,7 @@ class DoublePendulumPlotter:
             init_func=init,
             interval=interval_ms,
             blit=True,
-            repeat=False,
+            repeat=repeat,
         )
 
         return animation
