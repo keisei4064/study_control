@@ -119,10 +119,13 @@ class MinimalOrderStateObserver:
         dt: float,
         z0: np.ndarray,
     ):
-        self.dim_x: int = 2
-        assert C.shape[1] == self.dim_x
+        A, b = model.calc_continuous_linear_system()
+        self.dim_x: int = A.shape[0]
         self.dim_y: int = C.shape[0]
-        assert L.shape == (self.dim_x - self.dim_y, self.dim_y)
+        self.dim_z: int = self.dim_x - self.dim_y
+        assert C.shape == (self.dim_y, self.dim_x)
+        assert L.shape == (self.dim_z, self.dim_y)
+        assert z0.shape == (self.dim_z,)
 
         self.C = C
         self.L = L
@@ -135,7 +138,6 @@ class MinimalOrderStateObserver:
         # C は [1, 0, 0, 0] or [[1, 0, 0, 0]; [0, 1, 0, 0]]
         # T = np.identity(self.dim_x)
 
-        A, b = model.calc_continuous_linear_system()
         A_11 = A[: self.dim_y, : self.dim_y]
         A_12 = A[: self.dim_y, self.dim_y :]
         A_21 = A[self.dim_y :, : self.dim_y]
@@ -149,8 +151,8 @@ class MinimalOrderStateObserver:
         self.H = B_2 - L @ B_1
         self.W = np.block(
             [
-                [np.zeros((self.dim_x, self.dim_x - self.dim_y))],
-                [np.eye(self.dim_x - self.dim_y)],
+                [np.zeros((self.dim_y, self.dim_z))],
+                [np.eye(self.dim_z)],
             ]
         )
         self.V = np.block(
@@ -172,8 +174,10 @@ class MinimalOrderStateObserver:
         z_dot = self.F @ z + self.G @ y + self.H @ u
         return z_dot
 
-    def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray, dt: float):
+    def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
         z = self.z
+        dt = self.dt
+        
         k1 = self._calc_z_dot(z, u, y)
         k2 = self._calc_z_dot(z + 0.5 * dt * k1, u, y)
         k3 = self._calc_z_dot(z + 0.5 * dt * k2, u, y)
@@ -296,12 +300,20 @@ def main():
 
     controller_poles = full_state_feedback.poles()
     # 一番遅いフィードバック極を基準に
-    observer_base = 5.0 * (-np.max(np.real(controller_poles)))
+    # observer_base = 5.0 * (-np.max(np.real(controller_poles)))
+    observer_base = 3.0 * (-np.mean(np.real(controller_poles)))
     observer_poles = -observer_base * np.array(
         [1.0, 1.2, 1.4, 1.6]
     )  # バラバラにする必要があるらしい
-    L = FullOrderStateObserver.calc_pole_placement(model, C, observer_poles)
-    observer = FullOrderStateObserver(model, C, L, sim_dt, x_hat0)
+    
+    # 同一次元オブザーバー
+    # L = FullOrderStateObserver.calc_pole_placement(model, C, observer_poles)
+    # observer = FullOrderStateObserver(model, C, L, sim_dt, x_hat0)
+    
+    # 最小次元オブザーバー
+    L = MinimalOrderStateObserver.calc_pole_placement(model, C, observer_poles[:-C.shape[0]])
+    observer = MinimalOrderStateObserver(model, C, L, sim_dt, z0=x_hat0[C.shape[0]:])
+    
     observer.print_observer_info()
     # =================================================
 
