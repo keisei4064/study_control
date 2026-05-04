@@ -12,8 +12,7 @@ from matplotlib.text import Text
 from typing import TypeAlias
 from typing import Literal
 
-from model import DoublePendulum
-from unforced_motion import unforced_motion
+from double_pendulum.model import DoublePendulum
 
 FloatArray: TypeAlias = npt.NDArray[np.float64]
 
@@ -322,46 +321,3 @@ class DoublePendulumPlotter:
                     fps=fps,
                     dpi=120,
                 )
-
-
-def main() -> None:
-    model = DoublePendulum(b_1=0.001, b_2=0.001)
-    plotter = DoublePendulumPlotter(model=model)
-    sim_dt = 0.001
-
-    x_history, t_history = unforced_motion(
-        model=model,
-        x0=np.array(
-            [
-                np.deg2rad(30.0),
-                np.deg2rad(10.0),
-                15.0,
-                15.0,
-            ],
-            dtype=np.float64,
-        ),
-        dt=sim_dt,
-        sim_time=50.0,
-    )
-
-    # アニメーションのプロット
-    interval_ms = sim_dt * 1000
-    stride = 50
-    x_video = x_history[::stride]
-    t_video = t_history[::stride]
-    interval_ms = interval_ms * stride
-    animation = plotter.animate(
-        x_history=x_video,
-        t_history=t_video,
-        interval_ms=interval_ms,
-    )
-    plt.show()
-    plotter.save_animation(animation, interval_ms, "gif")
-
-    # 1フレームプロット
-    plotter.plot(x=x_history[0], t=0.0)
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
