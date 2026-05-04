@@ -1,11 +1,13 @@
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
+from typing import cast
+
 
 def calc_controlability_matrix(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     """可制御性行列を計算"""
     n = B.shape[0]
-    l = B.shape[1]
+    l = B.shape[1]  # noqa: E741
     assert A.shape == (n, n)
 
     U_c = np.zeros((n, n * l))
@@ -35,7 +37,10 @@ ComplexArray = npt.NDArray[np.complex128]
 
 
 def plot_eigenvalues_on_complex_plane(ax: Axes, A: FloatArray, label: str) -> Axes:
-    eigvals: ComplexArray = np.linalg.eigvals(A)
+    eigvals = cast(
+        ComplexArray,
+        np.asarray(np.linalg.eigvals(A), dtype=np.complex128),
+    )
 
     # 描画
     ax.scatter(eigvals.real, eigvals.imag, label=label)
@@ -50,7 +55,7 @@ def plot_eigenvalues_on_complex_plane(ax: Axes, A: FloatArray, label: str) -> Ax
     ax.grid(True)
     ax.set_aspect("equal")
     ax.legend()
-    
+
     return ax
 
 

@@ -175,7 +175,7 @@ def main():
     # アニメーション ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
-    animation = plotter.animate(
+    _animation = plotter.animate(
         x_history=x_vec[::split_num],
         t_history=t_vec[::split_num],
         interval_ms=anim_dt * 1000,

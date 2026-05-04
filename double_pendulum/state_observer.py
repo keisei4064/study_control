@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Protocol
 
 from model import DoublePendulum
-import continuous_controller
+import state_feedback
 
 
 class SensingMode(Enum):
@@ -223,7 +223,7 @@ class MinimalOrderStateObserver:
 
 def simulate(
     model: DoublePendulum,
-    full_state_feedback: continuous_controller.FullStateFeedback,
+    full_state_feedback: state_feedback.FullStateFeedback,
     C: np.ndarray,
     observer: ObserverProtocol,
     x0: np.ndarray,
@@ -291,9 +291,9 @@ def main():
 
     Q = np.diag([10.0, 100.0, 0.1, 0.1])
     R = np.array([[1.0]])
-    F = continuous_controller.calc_lqr(model, Q, R)
+    F = state_feedback.calc_lqr(model, Q, R)
 
-    full_state_feedback = continuous_controller.FullStateFeedback(model, F)
+    full_state_feedback = state_feedback.FullStateFeedback(model, F)
     full_state_feedback.print_feedback_system_info()
     # =================================================
     # オブザーバーの構築
@@ -400,7 +400,7 @@ def main():
     # アニメーション ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
-    animation = plotter.animate(
+    _animation = plotter.animate(
         x_history=x_vec[::split_num],
         t_history=t_vec[::split_num],
         x_hat_history=x_hat_vec[::split_num],

@@ -1692,3 +1692,148 @@ $$
 
 この形は、非線形シミュレーションにも線形化にも使える。
 
+---
+
+## 連続時間系から離散時間系へ
+
+連続時間の線形系を
+
+$$
+\dot{x}(t)=A_cx(t)+b_cu(t)
+$$
+
+とする。サンプリング周期を \(T\) とし，入力はサンプル間で一定とする。
+
+$$
+u(t)=u[i]
+\qquad
+iT\le t < (i+1)T
+$$
+
+このとき，離散時間系は
+
+$$
+x[i+1]=A_dx[i]+b_du[i]
+$$
+
+となる。
+
+---
+
+## ZOH 離散化
+
+厳密には
+
+$$
+A_d=e^{A_cT}
+$$
+
+$$
+b_d=\int_0^T e^{A_c\tau}b_c\,d\tau
+$$
+
+である。
+
+---
+
+## 拡大行列による計算
+
+入力がサンプル間で一定なので，
+
+$$
+\dot{u}=0
+$$
+
+と見なせる。そこで
+
+$$
+z=
+\begin{bmatrix}
+x\\
+u
+\end{bmatrix}
+$$
+
+とおくと，
+
+$$
+\dot{z}
+=
+\begin{bmatrix}
+A_c & b_c\\
+0 & 0
+\end{bmatrix}
+z
+$$
+
+である。
+
+したがって，
+
+$$
+z[i+1]
+=
+\exp\left(
+\begin{bmatrix}
+A_c & b_c\\
+0 & 0
+\end{bmatrix}T
+\right)
+z[i]
+$$
+
+となる。
+
+この行列指数関数は
+
+$$
+\exp\left(
+\begin{bmatrix}
+A_c & b_c\\
+0 & 0
+\end{bmatrix}T
+\right)
+=
+\begin{bmatrix}
+A_d & b_d\\
+0 & 1
+\end{bmatrix}
+$$
+
+となるので，左上から \(A_d\)，右上から \(b_d\) が得られる。
+
+---
+
+## メモ
+
+単入力なら右下は \(1\)。
+
+多入力なら
+
+$$
+z=
+\begin{bmatrix}
+x\\
+u
+\end{bmatrix},
+\qquad
+u\in\mathbb{R}^m
+$$
+
+として，
+
+$$
+\exp\left(
+\begin{bmatrix}
+A_c & B_c\\
+0 & 0
+\end{bmatrix}T
+\right)
+=
+\begin{bmatrix}
+A_d & B_d\\
+0 & I_m
+\end{bmatrix}
+$$
+
+となる。

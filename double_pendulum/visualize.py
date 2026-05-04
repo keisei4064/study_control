@@ -18,7 +18,7 @@ from unforced_motion import unforced_motion
 FloatArray: TypeAlias = npt.NDArray[np.float64]
 
 
-def darken_color(color: object, factor: float = 0.8) -> tuple[float, float, float]:
+def darken_color(color, factor: float = 0.8) -> tuple[float, float, float]:
     """Matplotlib の色指定を少し暗くした RGB に変換する。"""
     r, g, b = mcolors.to_rgb(color)
     return (factor * r, factor * g, factor * b)
