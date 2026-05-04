@@ -109,3 +109,77 @@ class DoublePendulum:
         x_next = x_prev + dt * (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6
 
         return x_next
+
+    def calc_continuous_linear_system(self):
+        g = self.g
+        M_1 = self.M_1
+        J_1 = self.J_1
+        L_1 = self.L_1
+        l_1 = self.l_1
+        b_1 = self.b_1
+        M_2 = self.M_2
+        J_2 = self.J_2
+        L_2 = self.L_2
+        l_2 = self.l_2
+        b_2 = self.b_2
+        k = self.k
+
+        M2L1l2 = M_2 * L_1 * l_2
+
+        # ブロック行列を用意
+        M_0 = np.array(
+            [
+                [J_1 + M_1 * l_1**2 + M_2 * L_1**2, M2L1l2],
+                [M2L1l2, J_2 + M_2 * l_2**2],
+            ]
+        )
+        H_q = np.array(
+            [
+                [-(M_1 * l_1 + M_2 * L_1) * g, 0],
+                [0, M_2 * l_2 * g],
+            ]
+        )
+        H_q_dot = np.array(
+            [
+                [-b_1 - b_2, -b_2],
+                [-b_2, -b_2],
+            ]
+        )
+        H_u = np.array(
+            [
+                [k],
+                [0],
+            ]
+        )
+
+        # 逆行列計算
+        M0_inverse_Hq = np.linalg.solve(M_0, H_q)
+        M0_inverse_Hqdot = np.linalg.solve(M_0, H_q_dot)
+        M0_inverse_Hu = np.linalg.solve(M_0, H_u)
+
+        A = np.block(
+            [
+                [np.zeros((2, 2)), np.identity(2)],
+                [M0_inverse_Hq, M0_inverse_Hqdot],
+            ]
+        )
+        b = np.block(
+            [
+                [np.zeros((2, 1))],
+                [M0_inverse_Hu],
+            ]
+        )
+
+        return A, b
+
+
+def main():
+    model = DoublePendulum()
+    A, b = model.calc_continuous_linear_system()
+    print(A)
+    print("\n---\n")
+    print(b)
+
+
+if __name__ == "__main__":
+    main()
