@@ -1,5 +1,7 @@
 import numpy as np
+import scipy.linalg
 from typing import Final
+
 
 default_g: Final[float] = 9.81
 
@@ -113,7 +115,7 @@ class DoublePendulum:
 
         return x_next
 
-    def calc_continuous_linear_system(self):
+    def calc_continuous_linear_system(self) -> tuple[np.ndarray, np.ndarray]:
         g = self.g
         M_1 = self.M_1
         J_1 = self.J_1
@@ -175,13 +177,41 @@ class DoublePendulum:
 
         return A, b
 
+    def calc_discrete_linear_system(
+        self, sample_T: float
+    ) -> tuple[np.ndarray, np.ndarray]:
+        A_c, b_c = self.calc_continuous_linear_system()
+        T = sample_T
+        dim_x = A_c.shape[0]
+        dim_u = b_c.shape[1]
+
+        # 行列指数関数
+        # [expm — SciPy v1.17.0 Manual](https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.expm.html)
+        A_c_augmented = np.block(
+            [
+                [A_c, b_c],
+                [np.zeros((dim_u, dim_x)), np.zeros((dim_u, dim_u))],
+            ]
+        )
+        A_d_augmented = scipy.linalg.expm(A_c_augmented * T)
+        A_d = A_d_augmented[:dim_x, :dim_x]
+        b_d = A_d_augmented[:dim_x, dim_x:]
+
+        return A_d, b_d
+
 
 def main():
     model = DoublePendulum()
-    A, b = model.calc_continuous_linear_system()
-    print(A)
+    A_c, b_c = model.calc_continuous_linear_system()
+    print("continuous linear system ---")
+    print(f"A_c:\n{A_c}")
+    print(f"b_c:\n{b_c}")
     print("\n---\n")
-    print(b)
+
+    A_d, b_d = model.calc_discrete_linear_system(sample_T=0.01)
+    print("discrete linear system ---")
+    print(f"A_d:\n{A_d}")
+    print(f"b_d:\n{b_d}")
 
 
 if __name__ == "__main__":
