@@ -192,8 +192,15 @@ def main():
         interval_ms=anim_dt * 1000,
         repeat=True,
     )
-    plt.show()
+    plt.show(block=False)
 
+    _phase_animation = plotter.animate_phase_space(
+        x_history=x_vec[::split_num],
+        t_history=t_vec[::split_num],
+        interval_ms=anim_dt * 1000,
+        repeat=True,
+    )
+    plt.show()
 
 if __name__ == "__main__":
     main()

@@ -65,6 +65,14 @@ if __name__ == "__main__":
     plt.show()
     # plotter.save_animation(animation, interval_ms, "gif")
 
+    # 相空間アニメーションのプロット
+    phase_animation = plotter.animate_phase_space(
+        x_history=x_video,
+        t_history=t_video,
+        interval_ms=interval_ms,
+    )
+    plt.show()
+
     # 1フレームプロット
     plotter.plot(x=x_history[0], t=0.0)
     plt.show()

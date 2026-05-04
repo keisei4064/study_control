@@ -33,6 +33,15 @@ class DoublePendulumArtists:
     time_text: Text
 
 
+@dataclass(slots=True)
+class PhaseSpaceArtists:
+    theta_1_line: Line2D
+    theta_2_line: Line2D
+    theta_1_point: Line2D
+    theta_2_point: Line2D
+    time_text: Text
+
+
 class DoublePendulumPlotter:
     def __init__(self, model: DoublePendulum):
         self.model = model
@@ -235,6 +244,99 @@ class DoublePendulumPlotter:
             func=update,
             frames=len(t_history),
             init_func=init,
+            interval=interval_ms,
+            blit=True,
+            repeat=repeat,
+        )
+
+        return animation
+
+    def animate_phase_space(
+        self,
+        x_history: FloatArray,
+        t_history: FloatArray,
+        interval_ms: float,
+        repeat: bool = False,
+    ) -> FuncAnimation:
+        """theta1/theta2 の相空間アニメーションを作成"""
+        if x_history.ndim != 2 or x_history.shape[1] != 4:
+            raise ValueError(f"x_history must have shape (N, 4), got {x_history.shape}")
+        if t_history.ndim != 1:
+            raise ValueError(f"t_history must have shape (N,), got {t_history.shape}")
+        if x_history.shape[0] != t_history.shape[0]:
+            raise ValueError(
+                f"x_history and t_history length mismatch: "
+                f"{x_history.shape[0]} != {t_history.shape[0]}"
+            )
+
+        fig, ax = plt.subplots()
+        ax.set_xlabel(r"$\theta$ [rad]")
+        ax.set_ylabel(r"$\dot{\theta}$ [rad/s]")
+        ax.grid(True)
+
+        # 変位の表示範囲
+        theta_min = float(np.min(x_history[:, 0:2]))
+        theta_max = float(np.max(x_history[:, 0:2]))
+        # 速度の表示範囲
+        theta_dot_min = float(np.min(x_history[:, 2:4]))
+        theta_dot_max = float(np.max(x_history[:, 2:4]))
+        theta_margin = max(0.05 * (theta_max - theta_min), 1.0e-6)
+        theta_dot_margin = max(0.05 * (theta_dot_max - theta_dot_min), 1.0e-6)
+        
+        # 軸範囲設定
+        ax.set_xlim(theta_min - theta_margin, theta_max + theta_margin)
+        ax.set_ylim(theta_dot_min - theta_dot_margin, theta_dot_max + theta_dot_margin)
+
+        # 線
+        (theta_1_line,) = ax.plot([], [], label=r"$\theta_1$", linewidth=1.5)
+        (theta_2_line,) = ax.plot([], [], label=r"$\theta_2$", linewidth=1.5)
+        theta_1_color = theta_1_line.get_color()
+        theta_2_color = theta_2_line.get_color()
+        # 点
+        (theta_1_point,) = ax.plot([], [], "o", color=theta_1_color, markersize=6.0)
+        (theta_2_point,) = ax.plot([], [], "o", color=theta_2_color, markersize=6.0)
+        # 時刻
+        time_text = ax.text(0.02, 0.95, "", transform=ax.transAxes, va="top")
+
+        ax.legend(loc="upper right")
+
+        artists = PhaseSpaceArtists(
+            theta_1_line=theta_1_line,
+            theta_2_line=theta_2_line,
+            theta_1_point=theta_1_point,
+            theta_2_point=theta_2_point,
+            time_text=time_text,
+        )
+
+        def update(frame_index: int) -> tuple[Artist, ...]:
+            end = frame_index + 1
+            # theta1
+            artists.theta_1_line.set_data(x_history[:end, 0], x_history[:end, 2])
+            artists.theta_1_point.set_data(
+                [x_history[frame_index, 0]],  # 変位
+                [x_history[frame_index, 2]],  # 速度
+            )
+            # theta2
+            artists.theta_2_line.set_data(x_history[:end, 1], x_history[:end, 3])
+            artists.theta_2_point.set_data(
+                [x_history[frame_index, 1]],
+                [x_history[frame_index, 3]],
+            )
+            # 時刻
+            artists.time_text.set_text(f"t = {t_history[frame_index]:.2f} s")
+            return (
+                artists.theta_1_line,
+                artists.theta_2_line,
+                artists.theta_1_point,
+                artists.theta_2_point,
+                artists.time_text,
+            )
+
+        animation = FuncAnimation(
+            fig=fig,
+            func=update,
+            frames=len(t_history),
+            init_func=lambda: update(0),
             interval=interval_ms,
             blit=True,
             repeat=repeat,
