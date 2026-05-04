@@ -20,10 +20,15 @@ class FullStateFeedback:
     def calc_u(self, x: np.ndarray) -> float:
         return (-self.F @ x)[0]
 
+    def poles(self):
+        return np.linalg.eig(self.A_closed_loop)[0]
+
     def print_feedback_system_info(self):
-        poles = np.linalg.eig(self.A_closed_loop)[0]
+        poles = self.poles()
+        print("Feedback System ---")
+        print(f"F: \n{self.F}")
         print(f"A_closed_loop: \n{self.A_closed_loop}")
-        print(f"closed-loop poles: {poles}")
+        print(f"poles: {poles}")
 
 
 def calc_pole_placement(model: DoublePendulum, target_poles: np.ndarray) -> np.ndarray:
@@ -112,7 +117,7 @@ def main():
     F = calc_lqr(model, Q, R)
 
     # =================================================
-    
+
     # シミュレーション ----------------------------------------------
 
     full_state_feedback = FullStateFeedback(model, F)
