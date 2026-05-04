@@ -2,17 +2,20 @@ import numpy as np
 from typing import Final
 
 default_g: Final[float] = 9.81
-default_M_1: Final[float] = 0.1
-default_J_1: Final[float] = 0.01
-default_L_1: Final[float] = 0.1
-default_l_1: Final[float] = 0.05
-default_b_1: Final[float] = 0.001
-default_M_2: Final[float] = 0.1
-default_J_2: Final[float] = 0.01
-default_L_2: Final[float] = 0.1
-default_l_2: Final[float] = 0.05
-default_b_2: Final[float] = 0.001
-default_k: Final[float] = 1.0
+
+default_M_1: Final[float] = 0.15  # kg
+default_L_1: Final[float] = 0.30  # m
+default_l_1: Final[float] = 0.15  # m
+default_J_1: Final[float] = 0.001125  # kg m^2 = (1/12) M_1 L_1^2
+default_b_1: Final[float] = 0.0005  # N m s/rad
+
+default_M_2: Final[float] = 0.15  # kg
+default_L_2: Final[float] = 0.30  # m
+default_l_2: Final[float] = 0.15  # m
+default_J_2: Final[float] = 0.00075  # kg m^2 = (1/12) M_2 L_2^2
+default_b_2: Final[float] = 0.0005  # N m s/rad
+
+default_k: Final[float] = 0.08  # N m / input unit
 
 
 class DoublePendulum:
