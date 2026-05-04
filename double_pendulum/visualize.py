@@ -236,6 +236,7 @@ class DoublePendulumPlotter:
 def main() -> None:
     model = DoublePendulum(b_1=0.001, b_2=0.001)
     plotter = DoublePendulumPlotter(model=model)
+    sim_dt = 0.001
 
     x_history, t_history = unforced_motion(
         model=model,
@@ -248,13 +249,13 @@ def main() -> None:
             ],
             dtype=np.float64,
         ),
-        dt=0.01,
+        dt=sim_dt,
         sim_time=50.0,
     )
 
     # アニメーションのプロット
-    interval_ms = 10
-    stride = 5
+    interval_ms = sim_dt * 1000
+    stride = 50
     x_video = x_history[::stride]
     t_video = t_history[::stride]
     interval_ms = interval_ms * stride
