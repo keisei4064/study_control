@@ -49,11 +49,13 @@ if __name__ == "__main__":
     print(x_history.shape)
     print(t_history.shape)
     plt.plot(t_history, x_history)
-    plt.show()
+    plt.show(block=False)
 
     # アニメーションのプロット
     interval_ms = sim_dt * 1000
-    stride = 50
+    # stride = 50
+    # stride = 5
+    stride = 2
     x_video = x_history[::stride]
     t_video = t_history[::stride]
     interval_ms = interval_ms * stride
@@ -62,7 +64,7 @@ if __name__ == "__main__":
         t_history=t_video,
         interval_ms=interval_ms,
     )
-    plt.show()
+    plt.show(block=False)
     # plotter.save_animation(animation, interval_ms, "gif")
 
     # 相空間アニメーションのプロット
@@ -71,7 +73,7 @@ if __name__ == "__main__":
         t_history=t_video,
         interval_ms=interval_ms,
     )
-    plt.show()
+    plt.show(block=False)
 
     # 1フレームプロット
     plotter.plot(x=x_history[0], t=0.0)

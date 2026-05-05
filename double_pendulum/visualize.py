@@ -3,6 +3,7 @@ from matplotlib.axes import Axes
 from matplotlib.artist import Artist
 import matplotlib.colors as mcolors
 from matplotlib.animation import FuncAnimation
+import matplotlib.ticker as ticker
 import numpy as np
 import numpy.typing as npt
 
@@ -274,18 +275,30 @@ class DoublePendulumPlotter:
         ax.set_ylabel(r"$\dot{\theta}$ [rad/s]")
         ax.grid(True)
 
-        # 変位の表示範囲
-        theta_min = float(np.min(x_history[:, 0:2]))
-        theta_max = float(np.max(x_history[:, 0:2]))
-        # 速度の表示範囲
-        theta_dot_min = float(np.min(x_history[:, 2:4]))
-        theta_dot_max = float(np.max(x_history[:, 2:4]))
-        theta_margin = max(0.05 * (theta_max - theta_min), 1.0e-6)
-        theta_dot_margin = max(0.05 * (theta_dot_max - theta_dot_min), 1.0e-6)
-        
-        # 軸範囲設定
-        ax.set_xlim(theta_min - theta_margin, theta_max + theta_margin)
-        ax.set_ylim(theta_dot_min - theta_dot_margin, theta_dot_max + theta_dot_margin)
+        # 変位の表示範囲（ゼロ対称、±5%マージン）
+        theta_max_abs = float(np.max(np.abs(x_history[:, 0:2])))
+        theta_dot_max_abs = float(np.max(np.abs(x_history[:, 2:4])))
+        theta_limit = max(theta_max_abs, 1.0e-6) * 1.05
+        theta_dot_limit = max(theta_dot_max_abs, 1.0e-6) * 1.05
+
+        # 軸範囲を [-1, 1] に正規化（正方形表示のため）
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(-1, 1)
+        ax.set_aspect("equal", adjustable="box")
+
+        # 目盛り位置を固定（5個：-1, -0.5, 0, 0.5, 1）
+        n_ticks = 5
+        tick_positions = np.linspace(-1, 1, n_ticks).tolist()
+        ax.xaxis.set_major_locator(ticker.FixedLocator(tick_positions))
+        ax.yaxis.set_major_locator(ticker.FixedLocator(tick_positions))
+
+        # 目盛りラベルを元のスケールで表示
+        ax.xaxis.set_major_formatter(
+            ticker.FuncFormatter(lambda v, _: f"{v * theta_limit:.2f}")
+        )
+        ax.yaxis.set_major_formatter(
+            ticker.FuncFormatter(lambda v, _: f"{v * theta_dot_limit:.2f}")
+        )
 
         # 線
         (theta_1_line,) = ax.plot([], [], label=r"$\theta_1$", linewidth=1.5)
@@ -310,17 +323,23 @@ class DoublePendulumPlotter:
 
         def update(frame_index: int) -> tuple[Artist, ...]:
             end = frame_index + 1
-            # theta1
-            artists.theta_1_line.set_data(x_history[:end, 0], x_history[:end, 2])
+            # theta1（正規化された座標で描画）
+            artists.theta_1_line.set_data(
+                x_history[:end, 0] / theta_limit,
+                x_history[:end, 2] / theta_dot_limit,
+            )
             artists.theta_1_point.set_data(
-                [x_history[frame_index, 0]],  # 変位
-                [x_history[frame_index, 2]],  # 速度
+                [x_history[frame_index, 0] / theta_limit],
+                [x_history[frame_index, 2] / theta_dot_limit],
             )
             # theta2
-            artists.theta_2_line.set_data(x_history[:end, 1], x_history[:end, 3])
+            artists.theta_2_line.set_data(
+                x_history[:end, 1] / theta_limit,
+                x_history[:end, 3] / theta_dot_limit,
+            )
             artists.theta_2_point.set_data(
-                [x_history[frame_index, 1]],
-                [x_history[frame_index, 3]],
+                [x_history[frame_index, 1] / theta_limit],
+                [x_history[frame_index, 3] / theta_dot_limit],
             )
             # 時刻
             artists.time_text.set_text(f"t = {t_history[frame_index]:.2f} s")
