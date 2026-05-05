@@ -141,11 +141,11 @@ def _build_torque_patch(
         return None
 
     magnitude = min(abs(torque) / torque_scale, 1.0)
-    magnitude_curve = magnitude**1.8
-    tail_width = min_tail_width + magnitude_curve * (max_tail_width - min_tail_width)
+    scale = math.log1p(2.0 * magnitude) / math.log1p(2.0)
+    tail_width = min_tail_width + scale * (max_tail_width - min_tail_width)
     head_width = max(2.0 * tail_width, tail_width * 2.6)
-    head_length_angle_deg = 18.0 + 8.0 * magnitude
-    alpha = 0.15 + 0.65 * magnitude
+    head_length_angle_deg = 18.0 + 8.0 * scale
+    alpha = 0.1 + 0.75 * scale
 
     if torque > 0.0:
         theta_start_deg = theta_pos_start_deg
@@ -321,7 +321,7 @@ class DoublePendulumPlotter:
         t: float,
         x_hat: FloatArray | None = None,
         u: float | None = None,
-        torque_scale: float = 1.0,
+        torque_scale: float = 15.0,
     ) -> tuple[Artist, ...]:
         link_1_x, link_1_y, link_2_x, link_2_y, point_x, point_y = self._calc_points(x)
 
@@ -386,7 +386,7 @@ class DoublePendulumPlotter:
         repeat: bool = False,
         x_hat_history: FloatArray | None = None,
         u_history: FloatArray | None = None,
-        torque_scale: float = 1.0,
+        torque_scale: float = 15.0,
     ) -> FuncAnimation:
         """アニメーションを作成"""
         # 配列shapeチェック
@@ -604,7 +604,7 @@ class DoublePendulumPlotter:
         repeat: bool = False,
         x_hat_history: FloatArray | None = None,
         u_history: FloatArray | None = None,
-        torque_scale: float = 1.0,
+        torque_scale: float = 15.0,
     ) -> FuncAnimation:
         """振り子 + 位相空間の両方を並べて表示するアニメーション"""
         if x_history.ndim != 2 or x_history.shape[1] != 4:
@@ -744,7 +744,7 @@ class DoublePendulumPlotter:
         x: FloatArray,
         t: float,
         u: float | None = None,
-        torque_scale: float = 1.0,
+        torque_scale: float = 15.0,
     ) -> tuple[Artist, ...]:
         """1フレーム単体をプロット"""
         fig, ax = plt.subplots()
