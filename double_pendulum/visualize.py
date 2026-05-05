@@ -562,3 +562,96 @@ class DoublePendulumPlotter:
                     fps=fps,
                     dpi=120,
                 )
+
+    def plot_time_series(
+        self,
+        t_vec: FloatArray,
+        x_vec: FloatArray,
+        u_vec: FloatArray,
+        x_hat_vec: FloatArray | None = None,
+    ) -> None:
+        """時間系列プロット: 状態、真値 vs 推定値、エラー、入力"""
+        # 形状チェック
+        if t_vec.ndim != 1:
+            raise ValueError(f"t_vec must have shape (N,), got {t_vec.shape}")
+        if x_vec.ndim != 2 or x_vec.shape[1] != 4:
+            raise ValueError(f"x_vec must have shape (N, 4), got {x_vec.shape}")
+        if u_vec.ndim != 1 and u_vec.ndim != 2:
+            raise ValueError(f"u_vec must have shape (N,) or (N, 1), got {u_vec.shape}")
+        if x_vec.shape[0] != t_vec.shape[0]:
+            raise ValueError(
+                f"x_vec and t_vec length mismatch: {x_vec.shape[0]} != {t_vec.shape[0]}"
+            )
+        if u_vec.shape[0] != t_vec.shape[0]:
+            raise ValueError(
+                f"u_vec and t_vec length mismatch: {u_vec.shape[0]} != {t_vec.shape[0]}"
+            )
+        if x_hat_vec is not None:
+            if x_hat_vec.ndim != 2 or x_hat_vec.shape[1] != 4:
+                raise ValueError(
+                    f"x_hat_vec must have shape (N, 4), got {x_hat_vec.shape}"
+                )
+            if x_hat_vec.shape[0] != t_vec.shape[0]:
+                raise ValueError(
+                    f"x_hat_vec and t_vec length mismatch: {x_hat_vec.shape[0]} != {t_vec.shape[0]}"
+                )
+
+        # エラーの自動計算
+        error_vec = None
+        if x_hat_vec is not None:
+            error_vec = x_vec - x_hat_vec
+
+        # サブプロット数決定
+        n_rows = 3 if x_hat_vec is not None else 2
+        fig, axes = plt.subplots(
+            n_rows,
+            1,
+            sharex=True,
+            figsize=(8, 6 if n_rows == 2 else 8),
+        )
+
+        ax_x = axes[0]
+        ax_u = axes[-1]  # 最後の軸が入力
+
+        # 状態プロット
+        state_labels = [
+            r"$\theta_1$",
+            r"$\theta_2$",
+            r"$\dot{\theta}_1$",
+            r"$\dot{\theta}_2$",
+        ]
+        for i, label in enumerate(state_labels):
+            ax_x.plot(t_vec, x_vec[:, i], label=label)
+
+        if x_hat_vec is not None:
+            state_hat_labels = [
+                r"$\hat{\theta}_1$",
+                r"$\hat{\theta}_2$",
+                r"$\hat{\dot{\theta}}_1$",
+                r"$\hat{\dot{\theta}}_2$",
+            ]
+            for i, hat_label in enumerate(state_hat_labels):
+                ax_x.plot(t_vec, x_hat_vec[:, i], linestyle="--", label=hat_label)
+
+        ax_x.set_ylabel("state")
+        ax_x.grid(True)
+        ax_x.legend(ncol=2, loc="upper right")
+
+        # エラープロット（推定値がある場合）
+        if error_vec is not None:
+            ax_e = axes[1]
+            for i, label in enumerate(state_labels):
+                ax_e.plot(t_vec, error_vec[:, i], label=rf"$e_{i + 1}$")
+            ax_e.set_ylabel("estimation error")
+            ax_e.grid(True)
+            ax_e.legend(ncol=4, loc="upper right")
+
+        # 入力プロット
+        ax_u.plot(t_vec, u_vec.squeeze(), label=r"$u$")
+        ax_u.set_xlabel("time [s]")
+        ax_u.set_ylabel("input")
+        ax_u.grid(True)
+        ax_u.legend(loc="upper right")
+
+        plt.tight_layout()
+        plt.show(block=False)

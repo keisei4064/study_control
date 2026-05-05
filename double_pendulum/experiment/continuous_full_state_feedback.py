@@ -90,40 +90,10 @@ def main():
     )
 
     # 結果のプロット ---------------------------------------------
-    state_labels = [
-        r"$\theta_1$",
-        r"$\theta_2$",
-        r"$\dot{\theta}_1$",
-        r"$\dot{\theta}_2$",
-    ]
-    fig, axes = plt.subplots(
-        2,
-        1,
-        sharex=True,
-        figsize=(8, 6),
-    )
-
-    ax_x = axes[0]
-    ax_u = axes[1]
-
-    for i, label in enumerate(state_labels):
-        ax_x.plot(t_vec, x_vec[:, i], label=label)
-
-    ax_x.set_ylabel("state")
-    ax_x.grid()
-    ax_x.legend()
-
-    ax_u.plot(t_vec, u_vec, label=r"$u$")
-    ax_u.set_xlabel("time [s]")
-    ax_u.set_ylabel("input")
-    ax_u.grid()
-    ax_u.legend()
-
-    plt.tight_layout()
-    plt.show(block=False)
+    plotter = visualize.DoublePendulumPlotter(model=model)
+    plotter.plot_time_series(t_vec, x_vec, u_vec)
 
     # アニメーション ---------------------------------------------
-    plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
     x_video = x_vec[::split_num]
     t_video = t_vec[::split_num]
@@ -152,6 +122,7 @@ def main():
         repeat=True,
     )
     plt.show()
+
 
 if __name__ == "__main__":
     main()

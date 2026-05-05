@@ -129,64 +129,10 @@ def main():
     )
 
     # 結果のプロット ---------------------------------------------
-    state_labels = [
-        r"$\theta_1$",
-        r"$\theta_2$",
-        r"$\dot{\theta}_1$",
-        r"$\dot{\theta}_2$",
-    ]
-
-    state_hat_labels = [
-        r"$\hat{\theta}_1$",
-        r"$\hat{\theta}_2$",
-        r"$\hat{\dot{\theta}}_1$",
-        r"$\hat{\dot{\theta}}_2$",
-    ]
-    error_vec = x_vec - x_hat_vec
-
-    fig, axes = plt.subplots(
-        3,
-        1,
-        sharex=True,
-        figsize=(8, 8),
-    )
-
-    ax_x = axes[0]
-    ax_e = axes[1]
-    ax_u = axes[2]
-
-    for i, (label, hat_label) in enumerate(
-        zip(state_labels, state_hat_labels, strict=True)
-    ):
-        ax_x.plot(t_vec, x_vec[:, i], label=label)
-        ax_x.plot(t_vec, x_hat_vec[:, i], linestyle="--", label=hat_label)
-
-    for i, label in enumerate(state_labels):
-        ax_e.plot(t_vec, error_vec[:, i], label=rf"$e_{i + 1}$")
-
-    ax_x.set_ylabel("state")
-    ax_x.grid()
-    ax_x.legend(ncol=2)
-
-    ax_e.set_ylabel("estimation error")
-    ax_e.grid()
-    ax_e.legend(ncol=4)
-
-    ax_u.plot(t_vec, u_vec.squeeze(), label=r"$u$")
-    ax_u.set_xlabel("time [s]")
-    ax_u.set_ylabel("input")
-    ax_u.grid()
-    ax_u.legend()
-
-    # 凡例は右上固定
-    ax_x.legend(ncol=2, loc="upper right")
-    ax_e.legend(ncol=4, loc="upper right")
-    ax_u.legend(loc="upper right")
-    plt.tight_layout()
-    plt.show(block=False)
+    plotter = visualize.DoublePendulumPlotter(model=model)
+    plotter.plot_time_series(t_vec, x_vec, u_vec, x_hat_vec=x_hat_vec)
 
     # アニメーション ---------------------------------------------
-    plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
 
     x_video = x_vec[::split_num]
