@@ -137,6 +137,7 @@ def main():
 
     x_video = x_vec[::split_num]
     t_video = t_vec[::split_num]
+    u_video = u_vec[::split_num]
     x_hat_video = x_hat_vec[::split_num]
     interval_ms = anim_dt * 1000
 
@@ -160,6 +161,7 @@ def main():
     _both_animation = plotter.animate_both(
         x_history=x_video,
         t_history=t_video,
+        u_history=u_video,
         x_hat_history=x_hat_video,
         interval_ms=interval_ms,
         repeat=True,

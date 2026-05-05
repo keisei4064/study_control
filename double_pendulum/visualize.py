@@ -1,3 +1,5 @@
+import math
+
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.artist import Artist
@@ -9,6 +11,8 @@ import numpy.typing as npt
 
 from dataclasses import dataclass
 from matplotlib.lines import Line2D
+from matplotlib.patches import PathPatch
+from matplotlib.path import Path
 from matplotlib.text import Text
 from typing import TypeAlias
 from typing import Literal
@@ -24,6 +28,152 @@ def darken_color(color, factor: float = 0.8) -> tuple[float, float, float]:
     return (factor * r, factor * g, factor * b)
 
 
+def _arc_points(
+    *,
+    center: tuple[float, float],
+    radius: float,
+    theta_start_rad: float,
+    theta_end_rad: float,
+    num_points: int,
+) -> list[tuple[float, float]]:
+    if radius <= 0.0:
+        raise ValueError("radius must be positive")
+    if num_points < 2:
+        raise ValueError("num_points must be greater than or equal to 2")
+
+    points: list[tuple[float, float]] = []
+    for index in range(num_points):
+        ratio = index / (num_points - 1)
+        theta_rad = theta_start_rad + ratio * (theta_end_rad - theta_start_rad)
+        points.append(
+            (
+                center[0] + radius * math.cos(theta_rad),
+                center[1] + radius * math.sin(theta_rad),
+            )
+        )
+    return points
+
+
+def _build_curved_arrow_path(
+    *,
+    center: tuple[float, float],
+    radius: float,
+    theta_start_deg: float,
+    theta_end_deg: float,
+    tail_width: float,
+    head_width: float,
+    head_length_angle_deg: float,
+    num_points: int = 80,
+) -> Path:
+    theta_start_rad = math.radians(theta_start_deg)
+    theta_end_rad = math.radians(theta_end_deg)
+    sweep_rad = theta_end_rad - theta_start_rad
+    if math.isclose(sweep_rad, 0.0, abs_tol=1e-12):
+        raise ValueError("theta_start_deg and theta_end_deg must be different")
+
+    direction = 1.0 if sweep_rad > 0.0 else -1.0
+    head_length_rad = math.radians(head_length_angle_deg) * direction
+    if abs(head_length_rad) >= abs(sweep_rad):
+        head_length_rad = 0.35 * sweep_rad
+
+    theta_head_base_rad = theta_end_rad - head_length_rad
+
+    outer_tail_radius = radius + tail_width / 2.0
+    inner_tail_radius = radius - tail_width / 2.0
+    outer_head_radius = radius + head_width / 2.0
+    inner_head_radius = radius - head_width / 2.0
+
+    outer_tail_points = _arc_points(
+        center=center,
+        radius=outer_tail_radius,
+        theta_start_rad=theta_start_rad,
+        theta_end_rad=theta_head_base_rad,
+        num_points=num_points,
+    )
+    inner_tail_points = _arc_points(
+        center=center,
+        radius=inner_tail_radius,
+        theta_start_rad=theta_head_base_rad,
+        theta_end_rad=theta_start_rad,
+        num_points=num_points,
+    )
+
+    outer_head_base = (
+        center[0] + outer_head_radius * math.cos(theta_head_base_rad),
+        center[1] + outer_head_radius * math.sin(theta_head_base_rad),
+    )
+    tip = (
+        center[0] + radius * math.cos(theta_end_rad),
+        center[1] + radius * math.sin(theta_end_rad),
+    )
+    inner_head_base = (
+        center[0] + inner_head_radius * math.cos(theta_head_base_rad),
+        center[1] + inner_head_radius * math.sin(theta_head_base_rad),
+    )
+
+    vertices: list[tuple[float, float]] = [
+        *outer_tail_points,
+        outer_head_base,
+        tip,
+        inner_head_base,
+        *inner_tail_points,
+        outer_tail_points[0],
+    ]
+    codes = [Path.MOVETO] + [Path.LINETO] * (len(vertices) - 2) + [Path.CLOSEPOLY]
+    return Path(vertices, codes)
+
+
+def _build_torque_patch(
+    *,
+    center: tuple[float, float],
+    radius: float,
+    torque: float,
+    torque_scale: float,
+    theta_pos_start_deg: float = 40.0,
+    theta_pos_end_deg: float = 140.0,
+    min_tail_width: float = 0.0,
+    max_tail_width: float = 0.14,
+    color: str = "red",
+) -> PathPatch | None:
+    if torque_scale <= 0.0:
+        raise ValueError("torque_scale must be positive")
+    if math.isclose(torque, 0.0, abs_tol=1e-12):
+        return None
+
+    magnitude = min(abs(torque) / torque_scale, 1.0)
+    magnitude_curve = magnitude**1.8
+    tail_width = min_tail_width + magnitude_curve * (max_tail_width - min_tail_width)
+    head_width = max(2.0 * tail_width, tail_width * 2.6)
+    head_length_angle_deg = 18.0 + 8.0 * magnitude
+    alpha = 0.15 + 0.65 * magnitude
+
+    if torque > 0.0:
+        theta_start_deg = theta_pos_start_deg
+        theta_end_deg = theta_pos_end_deg
+    else:
+        theta_start_deg = theta_pos_end_deg
+        theta_end_deg = theta_pos_start_deg
+
+    path = _build_curved_arrow_path(
+        center=center,
+        radius=radius,
+        theta_start_deg=theta_start_deg,
+        theta_end_deg=theta_end_deg,
+        tail_width=tail_width,
+        head_width=head_width,
+        head_length_angle_deg=head_length_angle_deg,
+    )
+
+    patch = PathPatch(
+        path,
+        facecolor=color,
+        edgecolor=color,
+        linewidth=0.0,
+        alpha=alpha,
+    )
+    return patch
+
+
 @dataclass(slots=True)
 class DoublePendulumArtists:
     line_1: Line2D
@@ -32,6 +182,7 @@ class DoublePendulumArtists:
     x_hat_line_1: Line2D
     x_hat_line_2: Line2D
     time_text: Text
+    torque_patch: PathPatch
 
 
 @dataclass(slots=True)
@@ -141,6 +292,18 @@ class DoublePendulumPlotter:
             va="top",
         )
 
+        torque_path = Path([(0.0, 0.0)], [Path.MOVETO])
+        torque_patch = PathPatch(
+            torque_path,
+            facecolor="red",
+            edgecolor="red",
+            linewidth=0.0,
+            alpha=0.65,
+            visible=False,
+            zorder=1,
+        )
+        ax.add_patch(torque_patch)
+
         return DoublePendulumArtists(
             line_1=line_1,
             line_2=line_2,
@@ -148,6 +311,7 @@ class DoublePendulumPlotter:
             x_hat_line_1=x_hat_line_1,
             x_hat_line_2=x_hat_line_2,
             time_text=time_text,
+            torque_patch=torque_patch,
         )
 
     def update_pendulum_artists(
@@ -156,6 +320,8 @@ class DoublePendulumPlotter:
         x: FloatArray,
         t: float,
         x_hat: FloatArray | None = None,
+        u: float | None = None,
+        torque_scale: float = 1.0,
     ) -> tuple[Artist, ...]:
         link_1_x, link_1_y, link_2_x, link_2_y, point_x, point_y = self._calc_points(x)
 
@@ -186,6 +352,22 @@ class DoublePendulumPlotter:
             artists.x_hat_line_1.set_visible(True)
             artists.x_hat_line_2.set_visible(True)
 
+        # トルク入力矢印を更新
+        if u is None:
+            artists.torque_patch.set_visible(False)
+        else:
+            torque_patch = _build_torque_patch(
+                center=(0.0, 0.0),
+                radius=0.25 * (self.model.L_1 + self.model.L_2),
+                torque=u,
+                torque_scale=torque_scale,
+            )
+            if torque_patch is None:
+                artists.torque_patch.set_visible(False)
+            else:
+                artists.torque_patch.set_path(torque_patch.get_path())
+                artists.torque_patch.set_visible(True)
+
         return (
             artists.line_1,
             artists.line_2,
@@ -193,6 +375,7 @@ class DoublePendulumPlotter:
             artists.x_hat_line_1,
             artists.x_hat_line_2,
             artists.time_text,
+            artists.torque_patch,
         )
 
     def animate_pendulum(
@@ -202,6 +385,8 @@ class DoublePendulumPlotter:
         interval_ms: float,
         repeat: bool = False,
         x_hat_history: FloatArray | None = None,
+        u_history: FloatArray | None = None,
+        torque_scale: float = 1.0,
     ) -> FuncAnimation:
         """アニメーションを作成"""
         # 配列shapeチェック
@@ -227,6 +412,17 @@ class DoublePendulumPlotter:
                     f"{x_hat_history.shape[0]} != {t_history.shape[0]}"
                 )
 
+        if u_history is not None:
+            if u_history.ndim not in {1, 2}:
+                raise ValueError(
+                    f"u_history must have shape (N,) or (N, 1), got {u_history.shape}"
+                )
+            if u_history.shape[0] != t_history.shape[0]:
+                raise ValueError(
+                    f"u_history and t_history length mismatch: "
+                    f"{u_history.shape[0]} != {t_history.shape[0]}"
+                )
+
         fig, ax = plt.subplots()
         self.setup_axes(ax)
         artists = self.init_pendulum_artists(ax)
@@ -234,11 +430,14 @@ class DoublePendulumPlotter:
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
             x_hat = None if x_hat_history is None else x_hat_history[frame_index]
+            u = None if u_history is None else float(np.squeeze(u_history[frame_index]))
             return self.update_pendulum_artists(
                 artists=artists,
                 x=x_history[frame_index],
                 x_hat=x_hat,
                 t=float(t_history[frame_index]),
+                u=u,
+                torque_scale=torque_scale,
             )
 
         # アニメーションオブジェクトの作成
@@ -404,6 +603,8 @@ class DoublePendulumPlotter:
         interval_ms: float,
         repeat: bool = False,
         x_hat_history: FloatArray | None = None,
+        u_history: FloatArray | None = None,
+        torque_scale: float = 1.0,
     ) -> FuncAnimation:
         """振り子 + 位相空間の両方を並べて表示するアニメーション"""
         if x_history.ndim != 2 or x_history.shape[1] != 4:
@@ -424,6 +625,17 @@ class DoublePendulumPlotter:
                 raise ValueError(
                     f"x_hat_history and t_history length mismatch: "
                     f"{x_hat_history.shape[0]} != {t_history.shape[0]}"
+                )
+
+        if u_history is not None:
+            if u_history.ndim not in {1, 2}:
+                raise ValueError(
+                    f"u_history must have shape (N,) or (N, 1), got {u_history.shape}"
+                )
+            if u_history.shape[0] != t_history.shape[0]:
+                raise ValueError(
+                    f"u_history and t_history length mismatch: "
+                    f"{u_history.shape[0]} != {t_history.shape[0]}"
                 )
 
         # 横並びで axes を作成
@@ -454,11 +666,14 @@ class DoublePendulumPlotter:
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
             x_hat = None if x_hat_history is None else x_hat_history[frame_index]
+            u = None if u_history is None else float(np.squeeze(u_history[frame_index]))
             pendulum_updates = self.update_pendulum_artists(
                 state.pendulum,
                 x_history[frame_index],
                 float(t_history[frame_index]),
                 x_hat,
+                u=u,
+                torque_scale=torque_scale,
             )
             ps_updates = self.update_phase_space_artists(
                 state.phase_space,
@@ -528,6 +743,8 @@ class DoublePendulumPlotter:
         self,
         x: FloatArray,
         t: float,
+        u: float | None = None,
+        torque_scale: float = 1.0,
     ) -> tuple[Artist, ...]:
         """1フレーム単体をプロット"""
         fig, ax = plt.subplots()
@@ -537,6 +754,8 @@ class DoublePendulumPlotter:
             artists=artists,
             x=x,
             t=t,
+            u=u,
+            torque_scale=torque_scale,
         )
 
     def save_animation(

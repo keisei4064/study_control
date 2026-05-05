@@ -97,6 +97,7 @@ def main():
     split_num = int(anim_dt / sim_dt)
     x_video = x_vec[::split_num]
     t_video = t_vec[::split_num]
+    u_video = u_vec[::split_num]
     interval_ms = anim_dt * 1000
 
     # _animation = plotter.animate(
@@ -118,8 +119,10 @@ def main():
     _both_animation = plotter.animate_both(
         x_history=x_video,
         t_history=t_video,
+        u_history=u_video,
         interval_ms=interval_ms,
         repeat=True,
+        # torque_scale=10.0
     )
     plt.show()
 
