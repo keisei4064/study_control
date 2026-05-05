@@ -28,22 +28,18 @@ if __name__ == "__main__":
     from double_pendulum.visualize import DoublePendulumPlotter
 
     model = DoublePendulum(b_1=0.001, b_2=0.001)
+    # model = DoublePendulum(b_1=0, b_2=0)
     plotter = DoublePendulumPlotter(model=model)
     sim_dt = 0.001
 
+    # x0 = np.array([np.deg2rad(30.0), np.deg2rad(10.0), 15.0, 15.0])
+    x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
+
     x_history, t_history = unforced_motion(
         model=model,
-        x0=np.array(
-            [
-                np.deg2rad(30.0),
-                np.deg2rad(10.0),
-                15.0,
-                15.0,
-            ],
-            dtype=np.float64,
-        ),
+        x0=x0,
         dt=sim_dt,
-        sim_time=50.0,
+        sim_time=15.0,
     )
 
     print(x_history.shape)
@@ -51,7 +47,7 @@ if __name__ == "__main__":
     plt.plot(t_history, x_history)
     plt.show(block=False)
 
-    # アニメーションのプロット
+    # アニメーション用データ
     interval_ms = sim_dt * 1000
     # stride = 50
     # stride = 5
@@ -59,19 +55,30 @@ if __name__ == "__main__":
     x_video = x_history[::stride]
     t_video = t_history[::stride]
     interval_ms = interval_ms * stride
+
+    # 物理アニメーションのプロット
     animation = plotter.animate(
         x_history=x_video,
         t_history=t_video,
         interval_ms=interval_ms,
     )
-    plt.show(block=False)
-    # plotter.save_animation(animation, interval_ms, "gif")
+    plt.show()
+    # # plotter.save_animation(animation, interval_ms, "gif")
 
-    # 相空間アニメーションのプロット
+    # # 相空間アニメーションのプロット
     phase_animation = plotter.animate_phase_space(
         x_history=x_video,
         t_history=t_video,
         interval_ms=interval_ms,
+    )
+    plt.show()
+
+    # 同時
+    both_animation = plotter.animate_both(
+        x_history=x_video,
+        t_history=t_video,
+        interval_ms=interval_ms,
+        repeat=True,
     )
     plt.show(block=False)
 

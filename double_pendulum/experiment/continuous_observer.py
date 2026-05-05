@@ -4,6 +4,7 @@ import double_pendulum.state_observer as state_observer
 
 import numpy as np
 
+
 def simulate(
     model: DoublePendulum,
     full_state_feedback: state_feedback.FullStateFeedback,
@@ -97,7 +98,9 @@ def main():
     L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
         model, C, observer_poles[: -C.shape[0]]
     )
-    observer = state_observer.MinimalOrderStateObserver(model, C, L, sim_dt, z0=x_hat0[C.shape[0] :])
+    observer = state_observer.MinimalOrderStateObserver(
+        model, C, L, sim_dt, z0=x_hat0[C.shape[0] :]
+    )
 
     observer.print_observer_info()
     # =================================================
@@ -185,22 +188,38 @@ def main():
     # アニメーション ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
-    _animation = plotter.animate(
-        x_history=x_vec[::split_num],
-        t_history=t_vec[::split_num],
-        x_hat_history=x_hat_vec[::split_num],
-        interval_ms=anim_dt * 1000,
-        repeat=True,
-    )
-    plt.show(block=False)
 
-    _phase_animation = plotter.animate_phase_space(
-        x_history=x_vec[::split_num],
-        t_history=t_vec[::split_num],
-        interval_ms=anim_dt * 1000,
+    x_video = x_vec[::split_num]
+    t_video = t_vec[::split_num]
+    x_hat_video = x_hat_vec[::split_num]
+    interval_ms = anim_dt * 1000
+
+    # _animation = plotter.animate(
+    #     x_history=x_video,
+    #     t_history=t_video,
+    #     interval_ms=interval_ms,
+    #     x_hat_history=x_hat_video,
+    #     repeat=True,
+    # )
+    # plt.show(block=False)
+
+    # _phase_animation = plotter.animate_phase_space(
+    #     x_history=x_video,
+    #     t_history=t_video,
+    #     interval_ms=interval_ms,
+    #     repeat=True,
+    # )
+    # plt.show()
+
+    _both_animation = plotter.animate_both(
+        x_history=x_video,
+        t_history=t_video,
+        x_hat_history=x_hat_video,
+        interval_ms=interval_ms,
         repeat=True,
     )
     plt.show()
+
 
 if __name__ == "__main__":
     main()

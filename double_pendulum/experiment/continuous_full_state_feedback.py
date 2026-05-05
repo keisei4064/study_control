@@ -125,18 +125,30 @@ def main():
     # アニメーション ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
     split_num = int(anim_dt / sim_dt)
-    _animation = plotter.animate(
-        x_history=x_vec[::split_num],
-        t_history=t_vec[::split_num],
-        interval_ms=anim_dt * 1000,
-        repeat=True,
-    )
-    plt.show(block=False)
+    x_video = x_vec[::split_num]
+    t_video = t_vec[::split_num]
+    interval_ms = anim_dt * 1000
 
-    _phase_animation = plotter.animate_phase_space(
-        x_history=x_vec[::split_num],
-        t_history=t_vec[::split_num],
-        interval_ms=anim_dt * 1000,
+    # _animation = plotter.animate(
+    #     x_history=x_video,
+    #     t_history=t_video,
+    #     interval_ms=interval_ms,
+    #     repeat=True,
+    # )
+    # plt.show(block=False)
+
+    # _phase_animation = plotter.animate_phase_space(
+    #     x_history=x_video,
+    #     t_history=t_video,
+    #     interval_ms=interval_ms,
+    #     repeat=True,
+    # )
+    # plt.show()
+
+    _both_animation = plotter.animate_both(
+        x_history=x_video,
+        t_history=t_video,
+        interval_ms=interval_ms,
         repeat=True,
     )
     plt.show()

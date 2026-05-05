@@ -43,6 +43,19 @@ class PhaseSpaceArtists:
     time_text: Text
 
 
+@dataclass(slots=True)
+class BothViewArtists:
+    pendulum: DoublePendulumArtists
+    pendulum_ax: Axes
+    phase_space: PhaseSpaceArtists
+    phase_space_ax: Axes
+    x_history: FloatArray
+    t_history: FloatArray
+    x_hat_history: FloatArray | None
+    theta_limit: float
+    theta_dot_limit: float
+
+
 class DoublePendulumPlotter:
     def __init__(self, model: DoublePendulum):
         self.model = model
@@ -218,17 +231,6 @@ class DoublePendulumPlotter:
         self.setup_axes(ax)
         artists = self.init_artists(ax)
 
-        # 初期化関数
-        def init() -> tuple[Artist, ...]:
-            # 単にインデックス0を指定するだけ
-            x_hat = None if x_hat_history is None else x_hat_history[0]
-            return self.update_artists(
-                artists=artists,
-                x=x_history[0],
-                x_hat=x_hat,
-                t=float(t_history[0]),
-            )
-
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
             x_hat = None if x_hat_history is None else x_hat_history[frame_index]
@@ -244,7 +246,7 @@ class DoublePendulumPlotter:
             fig=fig,
             func=update,
             frames=len(t_history),
-            init_func=init,
+            init_func=lambda: update(0),
             interval=interval_ms,
             blit=True,
             repeat=repeat,
@@ -252,25 +254,13 @@ class DoublePendulumPlotter:
 
         return animation
 
-    def animate_phase_space(
+    def init_phase_space_artists(
         self,
+        ax: Axes,
         x_history: FloatArray,
         t_history: FloatArray,
-        interval_ms: float,
-        repeat: bool = False,
-    ) -> FuncAnimation:
-        """theta1/theta2 の相空間アニメーションを作成"""
-        if x_history.ndim != 2 or x_history.shape[1] != 4:
-            raise ValueError(f"x_history must have shape (N, 4), got {x_history.shape}")
-        if t_history.ndim != 1:
-            raise ValueError(f"t_history must have shape (N,), got {t_history.shape}")
-        if x_history.shape[0] != t_history.shape[0]:
-            raise ValueError(
-                f"x_history and t_history length mismatch: "
-                f"{x_history.shape[0]} != {t_history.shape[0]}"
-            )
-
-        fig, ax = plt.subplots()
+    ) -> tuple[PhaseSpaceArtists, float, float]:
+        """位相空間のプロットを初期化し、artists と表示範囲を返す"""
         ax.set_xlabel(r"$\theta$ [rad]")
         ax.set_ylabel(r"$\dot{\theta}$ [rad/s]")
         ax.grid(True)
@@ -320,37 +310,167 @@ class DoublePendulumPlotter:
             theta_2_point=theta_2_point,
             time_text=time_text,
         )
+        return artists, theta_limit, theta_dot_limit
+
+    def update_phase_space_artists(
+        self,
+        artists: PhaseSpaceArtists,
+        theta_limit: float,
+        theta_dot_limit: float,
+        frame_index: int,
+        x_history: FloatArray,
+        t_history: FloatArray,
+    ) -> tuple[Artist, ...]:
+        """位相空間のアートをフレーム更新"""
+        end = frame_index + 1
+        # theta1（正規化された座標で描画）
+        artists.theta_1_line.set_data(
+            x_history[:end, 0] / theta_limit,
+            x_history[:end, 2] / theta_dot_limit,
+        )
+        artists.theta_1_point.set_data(
+            [x_history[frame_index, 0] / theta_limit],
+            [x_history[frame_index, 2] / theta_dot_limit],
+        )
+        # theta2
+        artists.theta_2_line.set_data(
+            x_history[:end, 1] / theta_limit,
+            x_history[:end, 3] / theta_dot_limit,
+        )
+        artists.theta_2_point.set_data(
+            [x_history[frame_index, 1] / theta_limit],
+            [x_history[frame_index, 3] / theta_dot_limit],
+        )
+        # 時刻
+        artists.time_text.set_text(f"t = {t_history[frame_index]:.2f} s")
+
+        return (
+            artists.theta_1_line,
+            artists.theta_2_line,
+            artists.theta_1_point,
+            artists.theta_2_point,
+            artists.time_text,
+        )
+
+    def animate_phase_space(
+        self,
+        x_history: FloatArray,
+        t_history: FloatArray,
+        interval_ms: float,
+        repeat: bool = False,
+    ) -> FuncAnimation:
+        """theta1/theta2 の相空間アニメーションを作成"""
+        if x_history.ndim != 2 or x_history.shape[1] != 4:
+            raise ValueError(f"x_history must have shape (N, 4), got {x_history.shape}")
+        if t_history.ndim != 1:
+            raise ValueError(f"t_history must have shape (N,), got {t_history.shape}")
+        if x_history.shape[0] != t_history.shape[0]:
+            raise ValueError(
+                f"x_history and t_history length mismatch: "
+                f"{x_history.shape[0]} != {t_history.shape[0]}"
+            )
+
+        fig, ax = plt.subplots()
+        artists, theta_limit, theta_dot_limit = self.init_phase_space_artists(
+            ax, x_history, t_history
+        )
 
         def update(frame_index: int) -> tuple[Artist, ...]:
-            end = frame_index + 1
-            # theta1（正規化された座標で描画）
-            artists.theta_1_line.set_data(
-                x_history[:end, 0] / theta_limit,
-                x_history[:end, 2] / theta_dot_limit,
-            )
-            artists.theta_1_point.set_data(
-                [x_history[frame_index, 0] / theta_limit],
-                [x_history[frame_index, 2] / theta_dot_limit],
-            )
-            # theta2
-            artists.theta_2_line.set_data(
-                x_history[:end, 1] / theta_limit,
-                x_history[:end, 3] / theta_dot_limit,
-            )
-            artists.theta_2_point.set_data(
-                [x_history[frame_index, 1] / theta_limit],
-                [x_history[frame_index, 3] / theta_dot_limit],
-            )
-            # 時刻
-            artists.time_text.set_text(f"t = {t_history[frame_index]:.2f} s")
-            return (
-                artists.theta_1_line,
-                artists.theta_2_line,
-                artists.theta_1_point,
-                artists.theta_2_point,
-                artists.time_text,
+            return self.update_phase_space_artists(
+                artists,
+                theta_limit,
+                theta_dot_limit,
+                frame_index,
+                x_history,
+                t_history,
             )
 
+        animation = FuncAnimation(
+            fig=fig,
+            func=update,
+            frames=len(t_history),
+            init_func=lambda: update(0),
+            interval=interval_ms,
+            blit=True,
+            repeat=repeat,
+        )
+
+        return animation
+
+    def animate_both(
+        self,
+        x_history: FloatArray,
+        t_history: FloatArray,
+        interval_ms: float,
+        repeat: bool = False,
+        x_hat_history: FloatArray | None = None,
+    ) -> FuncAnimation:
+        """振り子 + 位相空間の両方を並べて表示するアニメーション"""
+        if x_history.ndim != 2 or x_history.shape[1] != 4:
+            raise ValueError(f"x_history must have shape (N, 4), got {x_history.shape}")
+        if t_history.ndim != 1:
+            raise ValueError(f"t_history must have shape (N,), got {t_history.shape}")
+        if x_history.shape[0] != t_history.shape[0]:
+            raise ValueError(
+                f"x_history and t_history length mismatch: "
+                f"{x_history.shape[0]} != {t_history.shape[0]}"
+            )
+        if x_hat_history is not None:
+            if x_hat_history.ndim != 2 or x_hat_history.shape[1] != 4:
+                raise ValueError(
+                    f"x_hat_history must have shape (N, 4), got {x_hat_history.shape}"
+                )
+            if x_hat_history.shape[0] != t_history.shape[0]:
+                raise ValueError(
+                    f"x_hat_history and t_history length mismatch: "
+                    f"{x_hat_history.shape[0]} != {t_history.shape[0]}"
+                )
+
+        # 横並びで axes を作成
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        self.setup_axes(ax1)
+
+        # 各Axes と描画artists を対応付け
+        # 振り子
+        pendulum_artists = self.init_artists(ax1)
+        # 位相空間
+        phase_space_artists, theta_limit, theta_dot_limit = (
+            self.init_phase_space_artists(ax2, x_history, t_history)
+        )
+
+        # Artists をまとめる
+        state = BothViewArtists(
+            pendulum=pendulum_artists,
+            pendulum_ax=ax1,
+            phase_space=phase_space_artists,
+            phase_space_ax=ax2,
+            x_history=x_history,
+            t_history=t_history,
+            x_hat_history=x_hat_history,
+            theta_limit=theta_limit,
+            theta_dot_limit=theta_dot_limit,
+        )
+
+        # 更新関数
+        def update(frame_index: int) -> tuple[Artist, ...]:
+            x_hat = None if x_hat_history is None else x_hat_history[frame_index]
+            pendulum_updates = self.update_artists(
+                state.pendulum,
+                x_history[frame_index],
+                float(t_history[frame_index]),
+                x_hat,
+            )
+            ps_updates = self.update_phase_space_artists(
+                state.phase_space,
+                theta_limit,
+                theta_dot_limit,
+                frame_index,
+                x_history,
+                t_history,
+            )
+            return (*pendulum_updates, *ps_updates)
+
+        # アニメーションを作成
         animation = FuncAnimation(
             fig=fig,
             func=update,
