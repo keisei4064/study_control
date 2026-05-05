@@ -57,7 +57,7 @@ if __name__ == "__main__":
     interval_ms = interval_ms * stride
 
     # 物理アニメーションのプロット
-    animation = plotter.animate(
+    animation = plotter.animate_pendulum(
         x_history=x_video,
         t_history=t_video,
         interval_ms=interval_ms,

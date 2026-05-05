@@ -71,7 +71,7 @@ class DoublePendulumPlotter:
         ax.set_ylim(-length - margin, length + margin)
         ax.grid(True)
 
-    def init_artists(self, ax: Axes) -> DoublePendulumArtists:
+    def init_pendulum_artists(self, ax: Axes) -> DoublePendulumArtists:
         (line_1,) = ax.plot(
             [],
             [],
@@ -150,7 +150,7 @@ class DoublePendulumPlotter:
             time_text=time_text,
         )
 
-    def update_artists(
+    def update_pendulum_artists(
         self,
         artists: DoublePendulumArtists,
         x: FloatArray,
@@ -195,7 +195,7 @@ class DoublePendulumPlotter:
             artists.time_text,
         )
 
-    def animate(
+    def animate_pendulum(
         self,
         x_history: FloatArray,
         t_history: FloatArray,
@@ -229,12 +229,12 @@ class DoublePendulumPlotter:
 
         fig, ax = plt.subplots()
         self.setup_axes(ax)
-        artists = self.init_artists(ax)
+        artists = self.init_pendulum_artists(ax)
 
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
             x_hat = None if x_hat_history is None else x_hat_history[frame_index]
-            return self.update_artists(
+            return self.update_pendulum_artists(
                 artists=artists,
                 x=x_history[frame_index],
                 x_hat=x_hat,
@@ -432,7 +432,7 @@ class DoublePendulumPlotter:
 
         # 各Axes と描画artists を対応付け
         # 振り子
-        pendulum_artists = self.init_artists(ax1)
+        pendulum_artists = self.init_pendulum_artists(ax1)
         # 位相空間
         phase_space_artists, theta_limit, theta_dot_limit = (
             self.init_phase_space_artists(ax2, x_history, t_history)
@@ -454,7 +454,7 @@ class DoublePendulumPlotter:
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
             x_hat = None if x_hat_history is None else x_hat_history[frame_index]
-            pendulum_updates = self.update_artists(
+            pendulum_updates = self.update_pendulum_artists(
                 state.pendulum,
                 x_history[frame_index],
                 float(t_history[frame_index]),
@@ -532,8 +532,8 @@ class DoublePendulumPlotter:
         """1フレーム単体をプロット"""
         fig, ax = plt.subplots()
         self.setup_axes(ax)
-        artists = self.init_artists(ax)
-        return self.update_artists(
+        artists = self.init_pendulum_artists(ax)
+        return self.update_pendulum_artists(
             artists=artists,
             x=x,
             t=t,
