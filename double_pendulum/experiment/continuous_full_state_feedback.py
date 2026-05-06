@@ -65,9 +65,11 @@ def main():
     # R = np.diag([0.1])
     Q = np.diag([10.0, 100.0, 0.1, 0.1])
     R = np.array([[1.0]])
-    F = state_feedback.calc_lqr(model, Q, R)
 
-    full_state_feedback = state_feedback.FullStateFeedback(model, F)
+    A, b = model.calc_continuous_linear_system()
+    F = state_feedback.calc_lqr(A, b, Q, R)
+
+    full_state_feedback = state_feedback.FullStateFeedback(A, b, F)
     full_state_feedback.print_feedback_system_info()
 
     # =================================================

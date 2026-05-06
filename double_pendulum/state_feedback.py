@@ -7,9 +7,8 @@ from double_pendulum.model import DoublePendulum
 class FullStateFeedback:
     """完全状態フィードバック"""
 
-    def __init__(self, model: DoublePendulum, F: np.ndarray):
+    def __init__(self, A: np.ndarray, b: np.ndarray, F: np.ndarray):
         self.F = F
-        A, b = model.calc_continuous_linear_system()
         self.A = A
         self.b = b
 
@@ -31,9 +30,10 @@ class FullStateFeedback:
         print(f"poles: {poles}")
 
 
-def calc_pole_placement(model: DoublePendulum, target_poles: np.ndarray) -> np.ndarray:
+def calc_pole_placement(
+    A: np.ndarray, b: np.ndarray, target_poles: np.ndarray
+) -> np.ndarray:
     """極配置関数"""
-    A, b = model.calc_continuous_linear_system()
     assert target_poles.shape == (A.shape[0],)
 
     # 極配置
@@ -44,12 +44,10 @@ def calc_pole_placement(model: DoublePendulum, target_poles: np.ndarray) -> np.n
     return F
 
 
-def calc_lqr(model: DoublePendulum, Q: np.ndarray, R: np.ndarray) -> np.ndarray:
+def calc_lqr(A: np.ndarray, b: np.ndarray, Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     """LQRで最適フィードバックを求める"""
     # リカッチ方程式を解く
-    A, b = model.calc_continuous_linear_system()
     P = scipy.linalg.solve_continuous_are(A, b, Q, R)
 
     F = np.linalg.solve(R, b.T @ P)
     return F
-

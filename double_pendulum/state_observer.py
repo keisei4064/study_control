@@ -3,8 +3,6 @@ import scipy.signal
 from enum import Enum
 from typing import Protocol
 
-from double_pendulum.model import DoublePendulum
-
 
 class SensingMode(Enum):
     FullOrderStateObserverButNotUseForFeedback = 1
@@ -25,13 +23,13 @@ class FullOrderStateObserver(ObserverProtocol):
 
     def __init__(
         self,
-        model: DoublePendulum,
+        A: np.ndarray,
+        b: np.ndarray,
         C: np.ndarray,
         L: np.ndarray,
         dt: float,
         x_hat0: np.ndarray,
     ):
-        A, b = model.calc_continuous_linear_system()
         self.dim_x: int = A.shape[0]
         assert C.shape[1] == self.dim_x
         self.dim_y: int = C.shape[0]
@@ -86,10 +84,9 @@ class FullOrderStateObserver(ObserverProtocol):
 
     @classmethod
     def calc_pole_placement(
-        cls, model: DoublePendulum, C: np.ndarray, target_poles: np.ndarray
+        cls, A: np.ndarray, C: np.ndarray, target_poles: np.ndarray
     ) -> np.ndarray:
         """極配置関数"""
-        A, _ = model.calc_continuous_linear_system()
         assert target_poles.shape == (A.shape[0],)
 
         # 双対問題
@@ -112,13 +109,13 @@ class MinimalOrderStateObserver:
 
     def __init__(
         self,
-        model: DoublePendulum,
+        A: np.ndarray,
+        b: np.ndarray,
         C: np.ndarray,
         L: np.ndarray,
         dt: float,
         z0: np.ndarray,
     ):
-        A, b = model.calc_continuous_linear_system()
         self.dim_x: int = A.shape[0]
         self.dim_y: int = C.shape[0]
         self.dim_z: int = self.dim_x - self.dim_y
@@ -202,9 +199,8 @@ class MinimalOrderStateObserver:
 
     @classmethod
     def calc_pole_placement(
-        cls, model: DoublePendulum, C: np.ndarray, target_poles: np.ndarray
+        cls, A: np.ndarray, C: np.ndarray, target_poles: np.ndarray
     ) -> np.ndarray:
-        A, _ = model.calc_continuous_linear_system()
         dim_x = A.shape[0]
         dim_y = C.shape[0]
 

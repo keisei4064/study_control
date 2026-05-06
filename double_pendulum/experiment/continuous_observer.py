@@ -72,12 +72,13 @@ def main():
 
     # =================================================
     # LQR でFを決定 ----------------------------------
+    A, b = model.calc_continuous_linear_system()
 
     Q = np.diag([10.0, 100.0, 0.1, 0.1])
     R = np.array([[1.0]])
-    F = state_feedback.calc_lqr(model, Q, R)
+    F = state_feedback.calc_lqr(A=A, b=b, Q=Q, R=R)
 
-    full_state_feedback = state_feedback.FullStateFeedback(model, F)
+    full_state_feedback = state_feedback.FullStateFeedback(A, b, F)
     full_state_feedback.print_feedback_system_info()
     # =================================================
     # オブザーバーの構築
@@ -91,15 +92,15 @@ def main():
     )  # バラバラにする必要があるらしい
 
     # 同一次元オブザーバー
-    # L = state_observer.FullOrderStateObserver.calc_pole_placement(model, C, observer_poles)
-    # observer = state_observer.FullOrderStateObserver(model, C, L, sim_dt, x_hat0)
+    # L = state_observer.FullOrderStateObserver.calc_pole_placement(A, C, observer_poles)
+    # observer = state_observer.FullOrderStateObserver(A, b, C, L, sim_dt, x_hat0)
 
     # 最小次元オブザーバー
     L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
-        model, C, observer_poles[: -C.shape[0]]
+        A, C, observer_poles[: -C.shape[0]]
     )
     observer = state_observer.MinimalOrderStateObserver(
-        model, C, L, sim_dt, z0=x_hat0[C.shape[0] :]
+        A, b, C, L, sim_dt, z0=x_hat0[C.shape[0] :]
     )
 
     observer.print_observer_info()
