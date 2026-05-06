@@ -114,6 +114,7 @@ class MinimalOrderStateObserver:
         L: np.ndarray,
         dt: DtOrDescrete,
         z0: np.ndarray,
+        y0: np.ndarray | None = None,
     ):
         self.dim_x: int = A.shape[0]
         self.dim_y: int = C.shape[0]
@@ -158,6 +159,8 @@ class MinimalOrderStateObserver:
         )
 
         self.x_hat = self.W @ self.z
+        if y0 is not None:
+            self.x_hat += self.V @ y0
 
     def get_x_hat(self) -> np.ndarray:
         return self.x_hat

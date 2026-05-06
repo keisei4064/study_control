@@ -68,7 +68,8 @@ def main():
     sim_dt = 0.0001
     sim_time = 2.0
     # ctrl_dt = 0.005
-    ctrl_dt = 0.01
+    # ctrl_dt = 0.01
+    ctrl_dt = 0.02
     # ctrl_dt = 0.05
     anim_dt = 0.01
 
@@ -102,22 +103,25 @@ def main():
     # 離散系では「一番遅い極」は絶対値が最大の極
     # オブザーバーを制御器より早く収束させたい
     slowest_controller_radius = np.max(np.abs(controller_poles))
-    observer_base_radius = slowest_controller_radius**20
+    observer_base_radius = slowest_controller_radius**3  # 適当に強める
 
     # 同じ極を重複させないように少しばらす
     observer_poles = observer_base_radius ** np.array([1.0, 1.2, 1.4, 1.6])
 
     # 同一次元オブザーバー
-    L = state_observer.FullOrderStateObserver.calc_pole_placement(A, C, observer_poles)
-    observer = state_observer.FullOrderStateObserver(A, b, C, L, "discrete", x_hat0)
+    # L = state_observer.FullOrderStateObserver.calc_pole_placement(A, C, observer_poles)
+    # observer = state_observer.FullOrderStateObserver(A, b, C, L, "discrete", x_hat0)
 
     # # 最小次元オブザーバー
-    # L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
-    #     A, C, observer_poles[: -C.shape[0]]
-    # )
-    # observer = state_observer.MinimalOrderStateObserver(
-    #     A, b, C, L, "descrete", z0=x_hat0[C.shape[0] :]
-    # )
+    L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
+        A, C, observer_poles[: -C.shape[0]]
+    )
+    y0 = C @ x0
+    x2_hat0 = x_hat0[C.shape[0] :]
+    z0 = x2_hat0 - L @ y0
+    observer = state_observer.MinimalOrderStateObserver(
+        A, b, C, L, "discrete", z0=z0, y0=y0
+    )
 
     observer.print_observer_info()
     # =================================================
