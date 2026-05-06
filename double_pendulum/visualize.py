@@ -851,6 +851,7 @@ class DoublePendulumPlotter:
         dpi=150,
     ):
         fps = int(1000 / interval_ms)
+        fps = 60
 
         match format:
             case "mp4":
