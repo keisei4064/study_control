@@ -23,6 +23,7 @@ def simulate_feedback_response(
     x_vec[0] = x0
     u = full_state_feedback.calc_u(x_vec[0])
 
+    # サンプラー
     sampler_count: float = 0.0
 
     # 4次ルンゲクッタ
