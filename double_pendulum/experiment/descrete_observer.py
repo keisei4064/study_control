@@ -25,7 +25,10 @@ def simulate(
     # 初期状態
     x_vec[0] = x0
     x_hat_vec[0] = observer.get_x_hat()
-    u_vec[0] = full_state_feedback.calc_u(x_hat_vec[0])
+    if use_observer:
+        u_vec[0] = full_state_feedback.calc_u(x_hat_vec[0])
+    else:
+        u_vec[0] = full_state_feedback.calc_u(x_vec[0])
 
     # サンプラー
     ctrl_step = round(ctrl_dt / sim_dt)
@@ -37,7 +40,7 @@ def simulate(
         x_vec[i] = model.rk4(x_vec[i - 1], float(u_vec[i - 1][0]), sim_dt)
 
         if i % ctrl_step == 0:
-            sampled_x = x_vec[i - 1]
+            sampled_x = x_vec[i]
             sampled_y = C @ sampled_x
 
             # オブザーバー計算
@@ -45,9 +48,9 @@ def simulate(
 
             # フィードバック入力
             if use_observer:
-                u_vec[i] = full_state_feedback.calc_u(x_hat_vec[i])  # 推定値
+                u_vec[i] = full_state_feedback.calc_u(x_hat_vec[i])
             else:
-                u_vec[i] = full_state_feedback.calc_u(sampled_x)  # 真値
+                u_vec[i] = full_state_feedback.calc_u(sampled_x)
         else:
             x_hat_vec[i] = x_hat_vec[i - 1]
             u_vec[i] = u_vec[i - 1]
@@ -85,7 +88,7 @@ def main():
     # C = np.array([[1.0, 0.0, 0.0, 0.0]])
     x_hat0 = np.array([0.0, 0.0, 0.0, 0.0])
 
-    # LQR でFを決定 ----------------------------------
+    # LQR でフィードバックを構築 ----------------------------------
     Q = np.diag([10.0, 100.0, 0.1, 0.1])
     R = np.array([[1.0]])
     F = state_feedback.calc_descrete_lqr(A, b, Q, R)
@@ -105,16 +108,16 @@ def main():
     observer_poles = observer_base_radius ** np.array([1.0, 1.2, 1.4, 1.6])
 
     # 同一次元オブザーバー
-    # L = state_observer.FullOrderStateObserver.calc_pole_placement(A, C, observer_poles)
-    # observer = state_observer.FullOrderStateObserver(A, b, C, L, sim_dt, x_hat0)
+    L = state_observer.FullOrderStateObserver.calc_pole_placement(A, C, observer_poles)
+    observer = state_observer.FullOrderStateObserver(A, b, C, L, "discrete", x_hat0)
 
     # # 最小次元オブザーバー
-    L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
-        A, C, observer_poles[: -C.shape[0]]
-    )
-    observer = state_observer.MinimalOrderStateObserver(
-        A, b, C, L, sim_dt, z0=x_hat0[C.shape[0] :]
-    )
+    # L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
+    #     A, C, observer_poles[: -C.shape[0]]
+    # )
+    # observer = state_observer.MinimalOrderStateObserver(
+    #     A, b, C, L, "descrete", z0=x_hat0[C.shape[0] :]
+    # )
 
     observer.print_observer_info()
     # =================================================

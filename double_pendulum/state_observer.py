@@ -1,13 +1,10 @@
 import numpy as np
 import scipy.signal
-from enum import Enum
 from typing import Protocol
+from typing import Literal, Union, cast
 
 
-class SensingMode(Enum):
-    FullOrderStateObserverButNotUseForFeedback = 1
-    FullOrderStateObserverMode = 2
-    MinimalOrderStateObserverMode = 3
+DtOrDescrete = Union[float, Literal["discrete"]]
 
 
 class ObserverProtocol(Protocol):
@@ -27,7 +24,7 @@ class FullOrderStateObserver(ObserverProtocol):
         b: np.ndarray,
         C: np.ndarray,
         L: np.ndarray,
-        dt: float,
+        dt: DtOrDescrete,
         x_hat0: np.ndarray,
     ):
         self.dim_x: int = A.shape[0]
@@ -52,26 +49,28 @@ class FullOrderStateObserver(ObserverProtocol):
     def get_A_closed_loop(self) -> np.ndarray:
         return self.A_closed_loop
 
-    def _calc_x_hat_dot(
-        self, x_hat: np.ndarray, u: np.ndarray, y: np.ndarray
-    ) -> np.ndarray:
+    def _calc_lhs(self, x_hat: np.ndarray, u: np.ndarray, y: np.ndarray) -> np.ndarray:
         assert y.shape == (self.dim_y,)
         # オブザーバーの計算
-        x_hat_dot = self.A @ x_hat + self.b @ u + self.L @ (y - self.C @ x_hat)
-        return x_hat_dot
+        return self.A @ x_hat + self.b @ u + self.L @ (y - self.C @ x_hat)
 
     def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
         x_hat = self.x_hat
-        dt = self.dt
 
-        # RK4 で計算
-        # y と u は固定でいいんか？
-        k1 = self._calc_x_hat_dot(x_hat, u, y)
-        k2 = self._calc_x_hat_dot(x_hat + 0.5 * dt * k1, u, y)
-        k3 = self._calc_x_hat_dot(x_hat + 0.5 * dt * k2, u, y)
-        k4 = self._calc_x_hat_dot(x_hat + dt * k3, u, y)
+        if self.dt == "discrete":
+            x_hat_next = self._calc_lhs(x_hat, u, y)
+        else:
+            dt = cast(float, self.dt)
 
-        x_hat_next = x_hat + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+            # RK4 で計算
+            # y と u は固定でいいんか？
+            k1 = self._calc_lhs(x_hat, u, y)
+            k2 = self._calc_lhs(x_hat + 0.5 * dt * k1, u, y)
+            k3 = self._calc_lhs(x_hat + 0.5 * dt * k2, u, y)
+            k4 = self._calc_lhs(x_hat + dt * k3, u, y)
+
+            x_hat_next = x_hat + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+
         self.x_hat = x_hat_next
         return x_hat_next
 
@@ -113,7 +112,7 @@ class MinimalOrderStateObserver:
         b: np.ndarray,
         C: np.ndarray,
         L: np.ndarray,
-        dt: float,
+        dt: DtOrDescrete,
         z0: np.ndarray,
     ):
         self.dim_x: int = A.shape[0]
@@ -166,19 +165,23 @@ class MinimalOrderStateObserver:
     def get_A_closed_loop(self) -> np.ndarray:
         return self.F
 
-    def _calc_z_dot(self, z: np.ndarray, u: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def _calc_lhs(self, z: np.ndarray, u: np.ndarray, y: np.ndarray) -> np.ndarray:
         z_dot = self.F @ z + self.G @ y + self.H @ u
         return z_dot
 
     def calc_next_x_hat(self, u: np.ndarray, y: np.ndarray) -> np.ndarray:
         z = self.z
-        dt = self.dt
 
-        k1 = self._calc_z_dot(z, u, y)
-        k2 = self._calc_z_dot(z + 0.5 * dt * k1, u, y)
-        k3 = self._calc_z_dot(z + 0.5 * dt * k2, u, y)
-        k4 = self._calc_z_dot(z + dt * k3, u, y)
-        next_z = z + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+        if self.dt == "discrete":
+            next_z = self._calc_lhs(z, u, y)
+        else:
+            dt = cast(float, self.dt)
+
+            k1 = self._calc_lhs(z, u, y)
+            k2 = self._calc_lhs(z + 0.5 * dt * k1, u, y)
+            k3 = self._calc_lhs(z + 0.5 * dt * k2, u, y)
+            k4 = self._calc_lhs(z + dt * k3, u, y)
+            next_z = z + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
 
         self.x_hat = self.W @ next_z + self.V @ y
 
