@@ -106,8 +106,11 @@ def main():
     L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
         A, C, observer_poles[: -C.shape[0]]
     )
+    y0 = C @ x0
+    x2_hat0 = x_hat0[C.shape[0] :]
+    z0 = x2_hat0 - L @ y0
     observer = state_observer.MinimalOrderStateObserver(
-        A, b, C, L, sim_dt, z0=x_hat0[C.shape[0] :]
+        A, b, C, L, sim_dt, z0=z0, y0=y0
     )
 
     observer.print_observer_info()
@@ -141,7 +144,13 @@ def main():
 
     # 結果のプロット ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
-    plotter.plot_time_series(t_vec, x_vec, u_vec, x_hat_vec=x_hat_vec, output_path=output_dir / "time_series.png")
+    plotter.plot_time_series(
+        t_vec,
+        x_vec,
+        u_vec,
+        x_hat_vec=x_hat_vec,
+        output_path=output_dir / "time_series.png",
+    )
 
     # アニメーション ---------------------------------------------
     split_num = int(anim_dt / sim_dt)
