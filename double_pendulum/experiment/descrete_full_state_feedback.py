@@ -51,7 +51,7 @@ def main():
     sim_dt = 0.0001
     sim_time = 3
     # ctrl_dt = 0.01
-    ctrl_dt = 0.02
+    ctrl_dt = 0.05
     anim_dt = 0.01
 
     # x0 = np.array([0.05, 0.0, 0.05, 0.05])
@@ -64,19 +64,27 @@ def main():
     A, b = model.calc_discrete_linear_system(ctrl_dt)  # 離散システム
 
     # 極配置 でFを決定 --------------------------------
-    target_poles = np.array([0.85, 0.88, 0.90, 0.92])
-    F = state_feedback.calc_pole_placement(A, b, target_poles)
+    # target_poles = np.array([0.85, 0.88, 0.90, 0.92])
+    # F = state_feedback.calc_pole_placement(A, b, target_poles)
 
     # LQR でFを決定 ----------------------------------
 
     # Q = np.diag([1.0, 1.0, 1.0, 1.0])
     # Q = np.diag([1.0, 1.0, 0, 0])
     # R = np.diag([0.1])
-    # Q = np.diag([10.0, 100.0, 0.1, 0.1])
-    # R = np.array([[1.0]])
+    Q = np.diag([10.0, 100.0, 0.1, 0.1])
+    R = np.array([[1.0]])
 
-    # F = state_feedback.calc_lqr(A, b, Q, R)
+    F = state_feedback.calc_descrete_lqr(A, b, Q, R)
 
+    # -------------------------------------------------
+    # 連続のまま解いた場合と比較
+    A_c, b_c = model.calc_continuous_linear_system()
+    F_c = state_feedback.calc_continuous_lqr(A_c, b_c, Q, R)
+
+    print("F:", F)
+    print("F_c:", F_c)
+    # F = F_c
     # =================================================
 
     full_state_feedback = state_feedback.FullStateFeedback(A, b, F)

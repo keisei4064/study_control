@@ -44,10 +44,23 @@ def calc_pole_placement(
     return F
 
 
-def calc_lqr(A: np.ndarray, b: np.ndarray, Q: np.ndarray, R: np.ndarray) -> np.ndarray:
-    """LQRで最適フィードバックを求める"""
+def calc_continuous_lqr(
+    A: np.ndarray, b: np.ndarray, Q: np.ndarray, R: np.ndarray
+) -> np.ndarray:
+    """連続リカッチを解いて最適フィードバックゲインを求める"""
     # リカッチ方程式を解く
     P = scipy.linalg.solve_continuous_are(A, b, Q, R)
 
     F = np.linalg.solve(R, b.T @ P)
+    return F
+
+
+def calc_descrete_lqr(
+    A: np.ndarray, b: np.ndarray, Q: np.ndarray, R: np.ndarray
+) -> np.ndarray:
+    """離散リカッチを解いて最適フィードバックゲインを求める"""
+    # リカッチ方程式を解く
+    P = scipy.linalg.solve_discrete_are(A, b, Q, R)
+
+    F = np.linalg.solve(R + b.T @ P @ b, b.T @ P @ A)
     return F
