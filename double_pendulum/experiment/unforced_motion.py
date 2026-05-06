@@ -53,7 +53,12 @@ if __name__ == "__main__":
     print(t_history.shape)
     # plt.plot(t_history, x_history)
     # plt.show(block=False)
-    plotter.plot_time_series(t_history, x_history, np.zeros((t_history.size, 1)), output_path=output_dir / "time_series.png")
+    plotter.plot_time_series(
+        t_history,
+        x_history,
+        np.zeros((t_history.size, 1)),
+        output_path=output_dir / "time_series.png",
+    )
 
     # アニメーション用データ
     interval_ms = sim_dt * 1000
@@ -70,9 +75,10 @@ if __name__ == "__main__":
         x_history=x_video,
         t_history=t_video,
         interval_ms=interval_ms,
+        show_time=False,
     )
+    plotter.save_animation(animation, interval_ms, output_dir, "mp4", dpi=200)
     plt.show()
-    # # plotter.save_animation(animation, interval_ms, "gif")
 
     # # 相空間アニメーションのプロット
     phase_animation = plotter.animate_phase_space(
@@ -90,7 +96,7 @@ if __name__ == "__main__":
         repeat=True,
     )
     # plotter.save_animation(both_animation, interval_ms, output_dir, "gif")
-    plotter.save_animation(both_animation, interval_ms, output_dir, "mp4")
+    # plotter.save_animation(both_animation, interval_ms, output_dir, "mp4")
     plt.show(block=False)
 
     # 1フレームプロット

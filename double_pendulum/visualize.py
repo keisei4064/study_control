@@ -481,6 +481,7 @@ class DoublePendulumPlotter:
         fig, ax = plt.subplots()
         self.setup_axes(ax)
         artists = self.init_pendulum_artists(ax, show_time=show_time)
+        fig.tight_layout()
 
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
@@ -745,6 +746,8 @@ class DoublePendulumPlotter:
                 t_history,
             )
             return (*pendulum_updates, *ps_updates)
+        
+        fig.tight_layout()
 
         # アニメーションを作成
         animation = FuncAnimation(

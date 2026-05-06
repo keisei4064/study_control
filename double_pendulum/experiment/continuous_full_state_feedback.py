@@ -137,8 +137,9 @@ def main():
         interval_ms=interval_ms,
         repeat=True,
         # torque_scale=10.0
+        show_time=False,
     )
-    plotter.save_animation(_both_animation, interval_ms, output_dir, "mp4")
+    plotter.save_animation(_both_animation, interval_ms, output_dir, "mp4", dpi=200)
     plt.show()
 
 
