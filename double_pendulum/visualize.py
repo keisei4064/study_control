@@ -247,7 +247,9 @@ class DoublePendulumPlotter:
         ax.set_ylim(-length - margin, length + margin)
         ax.grid(True)
 
-    def init_pendulum_artists(self, ax: Axes) -> DoublePendulumArtists:
+    def init_pendulum_artists(
+        self, ax: Axes, show_time: bool = True
+    ) -> DoublePendulumArtists:
         # 軸のtickラベルと目盛りを非表示
         ax.set_xticklabels([])
         ax.set_yticklabels([])
@@ -335,6 +337,7 @@ class DoublePendulumPlotter:
             transform=ax.transAxes,
             va="top",
         )
+        time_text.set_visible(show_time)
 
         torque_path = Path([(0.0, 0.0)], [Path.MOVETO])
         torque_patch = PathPatch(
@@ -438,6 +441,7 @@ class DoublePendulumPlotter:
         x_hat_history: FloatArray | None = None,
         u_history: FloatArray | None = None,
         torque_scale: float = TORQUE_SCALE_DEFAULT,
+        show_time: bool = True,
     ) -> FuncAnimation:
         """アニメーションを作成"""
         # 配列shapeチェック
@@ -476,7 +480,7 @@ class DoublePendulumPlotter:
 
         fig, ax = plt.subplots()
         self.setup_axes(ax)
-        artists = self.init_pendulum_artists(ax)
+        artists = self.init_pendulum_artists(ax, show_time=show_time)
 
         # 更新関数
         def update(frame_index: int) -> tuple[Artist, ...]:
@@ -509,6 +513,7 @@ class DoublePendulumPlotter:
         ax: Axes,
         x_history: FloatArray,
         t_history: FloatArray,
+        show_time: bool = True,
     ) -> tuple[PhaseSpaceArtists, float, float]:
         """位相空間のプロットを初期化し、artists と表示範囲を返す"""
         ax.set_xlabel(r"$\theta$ [rad]")
@@ -550,6 +555,7 @@ class DoublePendulumPlotter:
         (theta_2_point,) = ax.plot([], [], "o", color=theta_2_color, markersize=6.0)
         # 時刻
         time_text = ax.text(0.02, 0.95, "", transform=ax.transAxes, va="top")
+        time_text.set_visible(show_time)
 
         ax.legend(loc="upper right")
 
@@ -608,6 +614,7 @@ class DoublePendulumPlotter:
         t_history: FloatArray,
         interval_ms: float,
         repeat: bool = False,
+        show_time: bool = True,
     ) -> FuncAnimation:
         """theta1/theta2 の相空間アニメーションを作成"""
         if x_history.ndim != 2 or x_history.shape[1] != 4:
@@ -622,7 +629,7 @@ class DoublePendulumPlotter:
 
         fig, ax = plt.subplots()
         artists, theta_limit, theta_dot_limit = self.init_phase_space_artists(
-            ax, x_history, t_history
+            ax, x_history, t_history, show_time=show_time
         )
 
         def update(frame_index: int) -> tuple[Artist, ...]:
@@ -656,6 +663,7 @@ class DoublePendulumPlotter:
         x_hat_history: FloatArray | None = None,
         u_history: FloatArray | None = None,
         torque_scale: float = TORQUE_SCALE_DEFAULT,
+        show_time: bool = True,
     ) -> FuncAnimation:
         """振り子 + 位相空間の両方を並べて表示するアニメーション"""
         if x_history.ndim != 2 or x_history.shape[1] != 4:
@@ -695,10 +703,12 @@ class DoublePendulumPlotter:
 
         # 各Axes と描画artists を対応付け
         # 振り子
-        pendulum_artists = self.init_pendulum_artists(ax1)
+        pendulum_artists = self.init_pendulum_artists(ax1, show_time=show_time)
         # 位相空間
         phase_space_artists, theta_limit, theta_dot_limit = (
-            self.init_phase_space_artists(ax2, x_history, t_history)
+            self.init_phase_space_artists(
+                ax2, x_history, t_history, show_time=show_time
+            )
         )
 
         # Artists をまとめる
@@ -814,11 +824,12 @@ class DoublePendulumPlotter:
         t: float,
         u: float | None = None,
         torque_scale: float = TORQUE_SCALE_DEFAULT,
+        show_time: bool = True,
     ) -> tuple[Artist, ...]:
         """1フレーム単体をプロット"""
         fig, ax = plt.subplots()
         self.setup_axes(ax)
-        artists = self.init_pendulum_artists(ax)
+        artists = self.init_pendulum_artists(ax, show_time=show_time)
         return self.update_pendulum_artists(
             artists=artists,
             x=x,
@@ -833,6 +844,7 @@ class DoublePendulumPlotter:
         interval_ms: float,
         output_dir: pathlib.Path,
         format: Literal["mp4", "gif"] = "mp4",
+        dpi=150,
     ):
         fps = int(1000 / interval_ms)
 
@@ -842,14 +854,14 @@ class DoublePendulumPlotter:
                     output_dir / "double_pendulum.mp4",
                     writer="ffmpeg",
                     fps=fps,
-                    dpi=150,
+                    dpi=dpi,
                 )
             case "gif":
                 animation.save(
                     output_dir / "double_pendulum.gif",
                     writer="pillow",
                     fps=fps,
-                    dpi=120,
+                    dpi=dpi,
                 )
 
     def plot_time_series(
