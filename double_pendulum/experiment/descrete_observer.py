@@ -108,11 +108,11 @@ def main():
     # 同じ極を重複させないように少しばらす
     observer_poles = observer_base_radius ** np.array([1.0, 1.2, 1.4, 1.6])
 
-    # 同一次元オブザーバー
+    # 同一次元オブザーバー ---
     # L = state_observer.FullOrderStateObserver.calc_pole_placement(A, C, observer_poles)
     # observer = state_observer.FullOrderStateObserver(A, b, C, L, "discrete", x_hat0)
 
-    # # 最小次元オブザーバー
+    # 最小次元オブザーバー ---
     L = state_observer.MinimalOrderStateObserver.calc_pole_placement(
         A, C, observer_poles[: -C.shape[0]]
     )
@@ -122,6 +122,8 @@ def main():
     observer = state_observer.MinimalOrderStateObserver(
         A, b, C, L, "discrete", z0=z0, y0=y0
     )
+    
+    # ---
 
     observer.print_observer_info()
     # =================================================
@@ -146,8 +148,8 @@ def main():
         ctrl_dt=ctrl_dt,
         sim_dt=sim_dt,
         sim_time=sim_time,
-        # use_observer=True,
-        use_observer=False,
+        use_observer=True,
+        # use_observer=False,
     )
 
     # 結果のプロット ---------------------------------------------
