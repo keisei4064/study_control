@@ -26,6 +26,13 @@ def unforced_motion(
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from double_pendulum.visualize import DoublePendulumPlotter
+    from pathlib import Path
+
+    # 出力ディレクトリ作成
+    script_dir = Path(__file__).parent
+    script_name = "unforced_motion"
+    output_dir = script_dir / "outputs" / script_name
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     model = DoublePendulum(b_1=0.001, b_2=0.001)
     # model = DoublePendulum(b_1=0, b_2=0)
@@ -44,14 +51,16 @@ if __name__ == "__main__":
 
     print(x_history.shape)
     print(t_history.shape)
-    plt.plot(t_history, x_history)
-    plt.show(block=False)
+    # plt.plot(t_history, x_history)
+    # plt.show(block=False)
+    plotter.plot_time_series(t_history, x_history, np.zeros((t_history.size, 1)), output_path=output_dir / "time_series.png")
 
     # アニメーション用データ
     interval_ms = sim_dt * 1000
     # stride = 50
+    stride = 10
     # stride = 5
-    stride = 2
+    # stride = 2
     x_video = x_history[::stride]
     t_video = t_history[::stride]
     interval_ms = interval_ms * stride
@@ -80,6 +89,8 @@ if __name__ == "__main__":
         interval_ms=interval_ms,
         repeat=True,
     )
+    # plotter.save_animation(both_animation, interval_ms, output_dir, "gif")
+    plotter.save_animation(both_animation, interval_ms, output_dir, "mp4")
     plt.show(block=False)
 
     # 1フレームプロット

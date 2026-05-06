@@ -45,11 +45,6 @@ def plot_eigenvalues_on_complex_plane(ax: Axes, A: FloatArray, label: str) -> Ax
     # 描画
     ax.scatter(eigvals.real, eigvals.imag, label=label)
 
-    x_left = ax.get_xlim()[0]
-    x_right = ax.get_xlim()[1]
-    radius = (x_right - x_left) / 2.0
-    ax.set_ylim(-radius, radius)
-
     # 実軸・虚軸
     ax.axhline(0.0, linewidth=1.0)
     ax.axvline(0.0, linewidth=1.0)
@@ -61,6 +56,18 @@ def plot_eigenvalues_on_complex_plane(ax: Axes, A: FloatArray, label: str) -> Ax
     ax.set_aspect("equal")
     ax.legend()
 
+    return ax
+
+
+def set_ax_to_square(ax: Axes) -> Axes:
+    x_left = ax.get_xlim()[0]
+    x_right = ax.get_xlim()[1]
+    x_center = (x_left + x_right) / 2
+    y_top = ax.get_ylim()[1]
+    y_bottom = ax.get_ylim()[0]
+    max_radius = max(x_right - x_left, y_top - y_bottom) / 2
+    ax.set_ylim(-max_radius, max_radius)
+    ax.set_xlim(x_center - max_radius, x_center + max_radius)
     return ax
 
 

@@ -16,6 +16,7 @@ from matplotlib.path import Path
 from matplotlib.text import Text
 from typing import TypeAlias
 from typing import Literal
+import pathlib
 
 from double_pendulum.model import DoublePendulum
 
@@ -785,6 +786,7 @@ class DoublePendulumPlotter:
         self,
         animation: FuncAnimation,
         interval_ms: float,
+        output_dir: pathlib.Path,
         format: Literal["mp4", "gif"] = "mp4",
     ):
         fps = int(1000 / interval_ms)
@@ -792,14 +794,14 @@ class DoublePendulumPlotter:
         match format:
             case "mp4":
                 animation.save(
-                    "double_pendulum.mp4",
+                    output_dir / "double_pendulum.mp4",
                     writer="ffmpeg",
                     fps=fps,
                     dpi=150,
                 )
             case "gif":
                 animation.save(
-                    "double_pendulum.gif",
+                    output_dir / "double_pendulum.gif",
                     writer="pillow",
                     fps=fps,
                     dpi=120,
@@ -811,6 +813,7 @@ class DoublePendulumPlotter:
         x_vec: FloatArray,
         u_vec: FloatArray,
         x_hat_vec: FloatArray | None = None,
+        output_path: pathlib.Path | None = None,
     ) -> None:
         """時間系列プロット: 状態、真値 vs 推定値、エラー、入力"""
         # 形状チェック
@@ -896,4 +899,6 @@ class DoublePendulumPlotter:
         ax_u.legend(loc="upper right")
 
         plt.tight_layout()
+        if output_path:
+            plt.savefig(output_path)
         plt.show(block=False)

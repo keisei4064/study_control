@@ -62,6 +62,13 @@ def main():
     import matplotlib.pyplot as plt
     import double_pendulum.visualize as visualize
     import double_pendulum.control_common as control_common
+    from pathlib import Path
+
+    # 出力ディレクトリ作成
+    script_dir = Path(__file__).parent
+    script_name = "descrete_observer"
+    output_dir = script_dir / "outputs" / script_name
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # 実験条件パラメータ設定 ----------------------------------------
     model = DoublePendulum()
@@ -135,7 +142,10 @@ def main():
     control_common.plot_eigenvalues_on_complex_plane(
         ax, observer.get_A_closed_loop(), "Observer"
     )
+    ax = control_common.set_ax_to_square(ax)
     plt.tight_layout()
+
+    plt.savefig(output_dir / "eigenvalues.png")
     plt.show(block=False)
 
     # シミュレーション ----------------------------------------------
@@ -154,7 +164,7 @@ def main():
 
     # 結果のプロット ---------------------------------------------
     plotter = visualize.DoublePendulumPlotter(model=model)
-    plotter.plot_time_series(t_vec, x_vec, u_vec, x_hat_vec=x_hat_vec)
+    plotter.plot_time_series(t_vec, x_vec, u_vec, x_hat_vec=x_hat_vec, output_path=output_dir / "time_series.png")
 
     # アニメーション ---------------------------------------------
     split_num = int(anim_dt / sim_dt)
@@ -190,6 +200,7 @@ def main():
         interval_ms=interval_ms,
         repeat=True,
     )
+    plotter.save_animation(_both_animation, interval_ms, output_dir, "mp4")
     plt.show()
 
 
