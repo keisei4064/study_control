@@ -245,7 +245,7 @@ class DoublePendulumPlotter:
         ax.set_aspect("equal")
         ax.set_xlim(-length - margin, length + margin)
         ax.set_ylim(-length - margin, length + margin)
-        ax.grid(True)
+        ax.grid(True, zorder=0)
 
     def init_pendulum_artists(
         self, ax: Axes, show_time: bool = True
@@ -321,6 +321,7 @@ class DoublePendulumPlotter:
             label=r"$\hat{x}$ link 2",
             zorder=5,
         )
+        ax.set_axisbelow(True)
 
         # デフォルトで非表示
         x_hat_line_1.set_visible(False)
