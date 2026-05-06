@@ -39,14 +39,14 @@ if __name__ == "__main__":
     plotter = DoublePendulumPlotter(model=model)
     sim_dt = 0.001
 
-    # x0 = np.array([np.deg2rad(30.0), np.deg2rad(10.0), 15.0, 15.0])
+    # x0 = np.array([np.deg2rad(180.0), np.deg2rad(10.0), 0.0, 10.0])
     x0 = np.array([np.deg2rad(30), np.deg2rad(20), 0, -10])
 
     x_history, t_history = unforced_motion(
         model=model,
         x0=x0,
         dt=sim_dt,
-        sim_time=15.0,
+        sim_time=10.0,
     )
 
     print(x_history.shape)

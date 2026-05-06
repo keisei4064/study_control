@@ -202,7 +202,8 @@ def _build_torque_patch(
 class DoublePendulumArtists:
     line_1: Line2D
     line_2: Line2D
-    point_line: Line2D
+    pivot_point: Line2D
+    joint_point: Line2D
     x_hat_line_1: Line2D
     x_hat_line_2: Line2D
     time_text: Text
@@ -247,13 +248,21 @@ class DoublePendulumPlotter:
         ax.grid(True)
 
     def init_pendulum_artists(self, ax: Axes) -> DoublePendulumArtists:
+        # 軸のtickラベルと目盛りを非表示
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        # グリッド間隔を2倍に
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(0.5))
         (line_1,) = ax.plot(
             [],
             [],
-            linewidth=12.0,
+            linewidth=15.0,
             solid_capstyle="round",
             label="true link 1",
-            zorder=2,
+            zorder=1,
         )
         (line_2,) = ax.plot(
             [],
@@ -261,15 +270,24 @@ class DoublePendulumPlotter:
             linewidth=12.0,
             solid_capstyle="round",
             label="true link 2",
-            zorder=2,
+            zorder=3,
         )
-        (point_line,) = ax.plot(
+        (pivot_point,) = ax.plot(
             [],
             [],
             "o",
             markersize=8.0,
-            label="true joints",
-            zorder=3,
+            label="pivot",
+            zorder=2,
+            color="gray",
+        )
+        (joint_point,) = ax.plot(
+            [],
+            [],
+            "o",
+            markersize=8.0,
+            label="joint",
+            zorder=4,
             color="gray",
         )
 
@@ -287,6 +305,7 @@ class DoublePendulumPlotter:
             solid_capstyle="round",
             dash_capstyle="round",
             label=r"$\hat{x}$ link 1",
+            zorder=5,
         )
         (x_hat_line_2,) = ax.plot(
             [],
@@ -298,6 +317,7 @@ class DoublePendulumPlotter:
             solid_capstyle="round",
             dash_capstyle="round",
             label=r"$\hat{x}$ link 2",
+            zorder=5,
         )
 
         # デフォルトで非表示
@@ -331,7 +351,8 @@ class DoublePendulumPlotter:
         return DoublePendulumArtists(
             line_1=line_1,
             line_2=line_2,
-            point_line=point_line,
+            pivot_point=pivot_point,
+            joint_point=joint_point,
             x_hat_line_1=x_hat_line_1,
             x_hat_line_2=x_hat_line_2,
             time_text=time_text,
@@ -347,11 +368,14 @@ class DoublePendulumPlotter:
         u: float | None = None,
         torque_scale: float = TORQUE_SCALE_DEFAULT,
     ) -> tuple[Artist, ...]:
-        link_1_x, link_1_y, link_2_x, link_2_y, point_x, point_y = self._calc_points(x)
+        link_1_x, link_1_y, link_2_x, link_2_y, pivot_x, pivot_y, joint_x, joint_y = (
+            self._calc_points(x)
+        )
 
         artists.line_1.set_data(link_1_x, link_1_y)
         artists.line_2.set_data(link_2_x, link_2_y)
-        artists.point_line.set_data(point_x, point_y)
+        artists.pivot_point.set_data(pivot_x, pivot_y)
+        artists.joint_point.set_data(joint_x, joint_y)
         artists.time_text.set_text(f"t = {t:.2f} s")
 
         # 推定値 x_hat があるならそれも描写
@@ -365,6 +389,8 @@ class DoublePendulumPlotter:
                 x_hat_link_1_y,
                 x_hat_link_2_x,
                 x_hat_link_2_y,
+                _,
+                _,
                 _,
                 _,
             ) = self._calc_points(x_hat)
@@ -395,7 +421,8 @@ class DoublePendulumPlotter:
         return (
             artists.line_1,
             artists.line_2,
-            artists.point_line,
+            artists.pivot_point,
+            artists.joint_point,
             artists.x_hat_line_1,
             artists.x_hat_line_2,
             artists.time_text,
@@ -726,7 +753,14 @@ class DoublePendulumPlotter:
         self,
         x: FloatArray,
     ) -> tuple[
-        list[float], list[float], list[float], list[float], list[float], list[float]
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
+        list[float],
     ]:
         """描画に必要な座標を計算する"""
         assert x.shape == (4,)
@@ -758,10 +792,21 @@ class DoublePendulumPlotter:
         link_2_y = [joint_1_y, tip_y]
 
         # 回転軸点の座標群
-        point_x = [pivot_x, joint_1_x]
-        point_y = [pivot_y, joint_1_y]
+        pivot_x = [pivot_x]
+        pivot_y = [pivot_y]
+        joint_x = [joint_1_x]
+        joint_y = [joint_1_y]
 
-        return link_1_x, link_1_y, link_2_x, link_2_y, point_x, point_y
+        return (
+            link_1_x,
+            link_1_y,
+            link_2_x,
+            link_2_y,
+            pivot_x,
+            pivot_y,
+            joint_x,
+            joint_y,
+        )
 
     def plot(
         self,
