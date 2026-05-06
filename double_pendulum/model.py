@@ -208,7 +208,7 @@ def main():
     print(f"b_c:\n{b_c}")
     print("\n---\n")
 
-    A_d, b_d = model.calc_discrete_linear_system(sample_T=0.01)
+    A_d, b_d = model.calc_discrete_linear_system(sample_T=0.05)
     print("discrete linear system ---")
     print(f"A_d:\n{A_d}")
     print(f"b_d:\n{b_d}")
