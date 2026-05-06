@@ -21,9 +21,25 @@ from double_pendulum.model import DoublePendulum
 
 FloatArray: TypeAlias = npt.NDArray[np.float64]
 
+TORQUE_SCALE_DEFAULT = 15.0
+TORQUE_PATCH_RADIUS_RATIO = 0.25
+TORQUE_PATCH_THETA_POS_START_DEG = 40.0
+TORQUE_PATCH_THETA_POS_END_DEG = 140.0
+TORQUE_PATCH_MIN_TAIL_WIDTH = 0.0
+TORQUE_PATCH_MAX_TAIL_WIDTH = 0.14
+TORQUE_PATCH_WIDTH_LOG_BASE = 2.0
+TORQUE_PATCH_HEAD_WIDTH_MIN_FACTOR = 2.0
+TORQUE_PATCH_HEAD_WIDTH_FACTOR = 2.6
+TORQUE_PATCH_HEAD_ANGLE_BASE_DEG = 18.0
+TORQUE_PATCH_HEAD_ANGLE_SCALE_DEG = 8.0
+TORQUE_PATCH_ALPHA_BASE = 0.1
+TORQUE_PATCH_ALPHA_SCALE = 0.75
+TORQUE_PATCH_COLOR = "red"
+TORQUE_PATCH_NUM_POINTS = 80
+
 
 def darken_color(color, factor: float = 0.8) -> tuple[float, float, float]:
-    """Matplotlib の色指定を少し暗くした RGB に変換する。"""
+    """Matplotlib の色指定を少し暗くした RGB に変換する"""
     r, g, b = mcolors.to_rgb(color)
     return (factor * r, factor * g, factor * b)
 
@@ -63,7 +79,7 @@ def _build_curved_arrow_path(
     tail_width: float,
     head_width: float,
     head_length_angle_deg: float,
-    num_points: int = 80,
+    num_points: int = TORQUE_PATCH_NUM_POINTS,
 ) -> Path:
     theta_start_rad = math.radians(theta_start_deg)
     theta_end_rad = math.radians(theta_end_deg)
@@ -129,11 +145,11 @@ def _build_torque_patch(
     radius: float,
     torque: float,
     torque_scale: float,
-    theta_pos_start_deg: float = 40.0,
-    theta_pos_end_deg: float = 140.0,
-    min_tail_width: float = 0.0,
-    max_tail_width: float = 0.14,
-    color: str = "red",
+    theta_pos_start_deg: float = TORQUE_PATCH_THETA_POS_START_DEG,
+    theta_pos_end_deg: float = TORQUE_PATCH_THETA_POS_END_DEG,
+    min_tail_width: float = TORQUE_PATCH_MIN_TAIL_WIDTH,
+    max_tail_width: float = TORQUE_PATCH_MAX_TAIL_WIDTH,
+    color: str = TORQUE_PATCH_COLOR,
 ) -> PathPatch | None:
     if torque_scale <= 0.0:
         raise ValueError("torque_scale must be positive")
@@ -141,11 +157,18 @@ def _build_torque_patch(
         return None
 
     magnitude = min(abs(torque) / torque_scale, 1.0)
-    scale = math.log1p(2.0 * magnitude) / math.log1p(2.0)
+    scale = math.log1p(TORQUE_PATCH_WIDTH_LOG_BASE * magnitude) / math.log1p(
+        TORQUE_PATCH_WIDTH_LOG_BASE
+    )
     tail_width = min_tail_width + scale * (max_tail_width - min_tail_width)
-    head_width = max(2.0 * tail_width, tail_width * 2.6)
-    head_length_angle_deg = 18.0 + 8.0 * scale
-    alpha = 0.1 + 0.75 * scale
+    head_width = max(
+        TORQUE_PATCH_HEAD_WIDTH_MIN_FACTOR * tail_width,
+        tail_width * TORQUE_PATCH_HEAD_WIDTH_FACTOR,
+    )
+    head_length_angle_deg = (
+        TORQUE_PATCH_HEAD_ANGLE_BASE_DEG + TORQUE_PATCH_HEAD_ANGLE_SCALE_DEG * scale
+    )
+    alpha = TORQUE_PATCH_ALPHA_BASE + TORQUE_PATCH_ALPHA_SCALE * scale
 
     if torque > 0.0:
         theta_start_deg = theta_pos_start_deg
@@ -321,7 +344,7 @@ class DoublePendulumPlotter:
         t: float,
         x_hat: FloatArray | None = None,
         u: float | None = None,
-        torque_scale: float = 15.0,
+        torque_scale: float = TORQUE_SCALE_DEFAULT,
     ) -> tuple[Artist, ...]:
         link_1_x, link_1_y, link_2_x, link_2_y, point_x, point_y = self._calc_points(x)
 
@@ -358,7 +381,7 @@ class DoublePendulumPlotter:
         else:
             torque_patch = _build_torque_patch(
                 center=(0.0, 0.0),
-                radius=0.25 * (self.model.L_1 + self.model.L_2),
+                radius=TORQUE_PATCH_RADIUS_RATIO * (self.model.L_1 + self.model.L_2),
                 torque=u,
                 torque_scale=torque_scale,
             )
@@ -386,7 +409,7 @@ class DoublePendulumPlotter:
         repeat: bool = False,
         x_hat_history: FloatArray | None = None,
         u_history: FloatArray | None = None,
-        torque_scale: float = 15.0,
+        torque_scale: float = TORQUE_SCALE_DEFAULT,
     ) -> FuncAnimation:
         """アニメーションを作成"""
         # 配列shapeチェック
@@ -604,7 +627,7 @@ class DoublePendulumPlotter:
         repeat: bool = False,
         x_hat_history: FloatArray | None = None,
         u_history: FloatArray | None = None,
-        torque_scale: float = 15.0,
+        torque_scale: float = TORQUE_SCALE_DEFAULT,
     ) -> FuncAnimation:
         """振り子 + 位相空間の両方を並べて表示するアニメーション"""
         if x_history.ndim != 2 or x_history.shape[1] != 4:
@@ -744,7 +767,7 @@ class DoublePendulumPlotter:
         x: FloatArray,
         t: float,
         u: float | None = None,
-        torque_scale: float = 15.0,
+        torque_scale: float = TORQUE_SCALE_DEFAULT,
     ) -> tuple[Artist, ...]:
         """1フレーム単体をプロット"""
         fig, ax = plt.subplots()
